@@ -1,0 +1,9 @@
+0. Setup hydra
+1. Download data.
+2. Setup pre-commits.
+3. Get data in data-folder.
+4. Create dataloaders
+5. Setup pytorch lighntning
+
+
+Create visualization tools
