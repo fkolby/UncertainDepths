@@ -1,6 +1,8 @@
 import os
 import csv
 import subprocess
+
+
 def extract_file_paths_to_csv(homepath: str, train_or_val: str, out_file: str) -> None:
     # train_or_val_path is e.g. "~..../external/KITTI/"
     """This function writes all the paths of images in train_or_val_path following the download to out_file"""
@@ -70,6 +72,3 @@ def extract_file_paths_to_csv(homepath: str, train_or_val: str, out_file: str) -
                     )
                     writer.writerow([input_path, label_path])
     return None
-
-
-

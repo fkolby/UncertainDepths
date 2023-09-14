@@ -1,6 +1,7 @@
 import src.utility.train_utils as utils
 from src.utility.debug_utils import debugxshape, shape_and_print_tensor
 
+
 @utils.retry(2)
 def lightning_imports():
     import pydantic
@@ -23,8 +24,6 @@ import logging
 
 log = logging.getLogger(__name__)
 in_debug = True
-
-
 
 
 # BatchXColorXHeightXWidth
