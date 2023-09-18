@@ -18,7 +18,6 @@ import time
 from torchinfo import summary
 import decorator
 import hydra
-from omegaconf import DictConfig, OmegaConf
 import logging
 
 
@@ -106,11 +105,6 @@ class BaseUNet(nn.Module):
         debugxshape(x)
 
         return x
-
-
-@hydra.main(version_base=None, config_path="../../conf", config_name="config")
-def save_config(cfg: DictConfig):
-    print(OmegaConf.to_yaml(cfg))
 
 
 if __name__ == "__main__":

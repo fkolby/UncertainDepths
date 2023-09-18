@@ -5,7 +5,7 @@ from PIL import Image
 import pandas as pd
 from torchvision import transforms
 from torch.utils.data import DataLoader, Dataset, Subset
-from extract_paths_to_csv import extract_file_paths_to_csv
+from src.data.extract_paths_to_csv import extract_file_paths_to_csv
 
 
 class KITTI_depth(Dataset):
@@ -49,7 +49,9 @@ class KITTIDataModule(pl.LightningDataModule):
         self.use_val_dir_for_val_and_test = use_val_dir_for_val_and_test
         self.transform = transforms.Compose([transforms.PILToTensor()])
         self.target_transform = transforms.Compose([transforms.PILToTensor()])
-
+    
+    def prepare_data(self) -> None:
+        print("setting up datamodule")
     def setup(self, stage: str) -> None:
         assert self.use_val_dir_for_val_and_test
         if stage == "fit":
