@@ -44,9 +44,9 @@ class KITTIDataModule(pl.LightningDataModule):
         data_dir: str = "/home/frederik/UncertainDepths/data/external/KITTI/",
         batch_size: int = 32,
         use_val_dir_for_val_and_test: bool = True,
-        transform = transforms.Compose([transforms.PILToTensor()]),
-        target_transform = transforms.Compose([transforms.PILToTensor()]),
-        num_workers: int = 8
+        transform=transforms.Compose([transforms.PILToTensor()]),
+        target_transform=transforms.Compose([transforms.PILToTensor()]),
+        num_workers: int = 8,
     ) -> None:
         super().__init__()
         self.data_dir = data_dir
@@ -59,10 +59,11 @@ class KITTIDataModule(pl.LightningDataModule):
         self.KITTI_test_set = None
         self.KITTI_predict_set = None
         self.num_workers = num_workers
+
     def prepare_data(self) -> None:
         print("setting up datamodule")
+
     def setup(self, stage: str) -> None:
-        
         print(stage)
         assert self.use_val_dir_for_val_and_test
         if stage == "fit":
@@ -71,16 +72,14 @@ class KITTIDataModule(pl.LightningDataModule):
                 data_dir=self.data_dir,
                 train_or_val="train",
                 transform=self.transform,
-                target_transform=self.target_transform
+                target_transform=self.target_transform,
             )
             print("got to evaluating KITTI train val set")
             self.KITTI_train_set = Subset(
-                KITTI_train_val_set, 
-                np.arange(0, 74272,dtype=int).tolist()
+                KITTI_train_val_set, np.arange(0, 74272, dtype=int).tolist()
             )  # corresponds to 86% of dataset, while still being a different drive.
             self.KITTI_val_set = Subset(
-                KITTI_train_val_set, 
-                np.arange(74272, len(KITTI_train_val_set),dtype=int).tolist()
+                KITTI_train_val_set, np.arange(74272, len(KITTI_train_val_set), dtype=int).tolist()
             )
             plot_and_save_tensor_as_fig(self.KITTI_train_set[-1][0], "last_train_img")
             plot_and_save_tensor_as_fig(self.KITTI_val_set[0][0], "first_val_img")
@@ -102,21 +101,29 @@ class KITTIDataModule(pl.LightningDataModule):
     def train_dataloader(self) -> DataLoader:
         print("hi train_loader called")
         if self.KITTI_train_set is None:
-            raise NameError("Warning: KITTI_train_set is not initialized. Did setup run successfully?")
+            raise NameError(
+                "Warning: KITTI_train_set is not initialized. Did setup run successfully?"
+            )
 
-        return DataLoader(self.KITTI_train_set, batch_size=self.batch_size, num_workers=self.num_workers)
-        
-        
+        return DataLoader(
+            self.KITTI_train_set, batch_size=self.batch_size, num_workers=self.num_workers
+        )
 
     def val_dataloader(self) -> DataLoader:
         print("val loading!")
-        return DataLoader(self.KITTI_val_set, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(
+            self.KITTI_val_set, batch_size=self.batch_size, num_workers=self.num_workers
+        )
 
     def test_dataloader(self) -> DataLoader:
-        return DataLoader(self.KITTI_test_set, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(
+            self.KITTI_test_set, batch_size=self.batch_size, num_workers=self.num_workers
+        )
 
     def predict_dataloader(self) -> DataLoader:
-        return DataLoader(self.KITTI_predict_set, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(
+            self.KITTI_predict_set, batch_size=self.batch_size, num_workers=self.num_workers
+        )
 
 
 if __name__ == "__main__":
@@ -130,6 +137,6 @@ if __name__ == "__main__":
     images = a.__next__()
     kitkat = KITTIDataModule(
         data_dir="/home/frederik/UncertainDepths/data/external/KITTI/", batch_size=32
-        )
+    )
     plot_and_save_tensor_as_fig(images[0], "atest")
     kitkat.setup("fit")

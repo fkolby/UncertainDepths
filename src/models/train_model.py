@@ -19,17 +19,31 @@ class KITTI_depth_lightning_module(pl.LightningModule):
         self.loss_function = loss_function
         self.lr = learning_rate
         self.tstep = 0
+
     def training_step(self, batch, batch_idx):
         x, y = batch
         preds = self.model(x)
         if self.tstep % 10 == 0:
-            imgA = transforms.ToPILImage()(x[0,:,:,:].squeeze(dim=0))
+            imgA = transforms.ToPILImage()(x[0, :, :, :].squeeze(dim=0))
             print(type(imgA))
-            wandb.log({"images" : 
-            [wandb.Image(imgA, "RGB", caption = f"Image {self.tstep} (input)"),
-            wandb.Image(transforms.ToPILImage()(y[0,:,:,:].squeeze(dim=0)), "RGB", caption = f"Image {self.tstep} (label)"),
-            wandb.Image(transforms.ToPILImage()(preds[0,:,:,:].squeeze(dim=0)), "RGB", caption = f"Image {self.tstep} (preds)")]})
-        self.tstep +=1 
+            wandb.log(
+                {
+                    "images": [
+                        wandb.Image(imgA, "RGB", caption=f"Image {self.tstep} (input)"),
+                        wandb.Image(
+                            transforms.ToPILImage()(y[0, :, :, :].squeeze(dim=0)),
+                            "RGB",
+                            caption=f"Image {self.tstep} (label)",
+                        ),
+                        wandb.Image(
+                            transforms.ToPILImage()(preds[0, :, :, :].squeeze(dim=0)),
+                            "RGB",
+                            caption=f"Image {self.tstep} (preds)",
+                        ),
+                    ]
+                }
+            )
+        self.tstep += 1
         loss = self.loss_function(preds, y)
 
         self.log("train_loss", loss)
