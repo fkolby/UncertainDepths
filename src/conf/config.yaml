@@ -1,4 +1,6 @@
 hyperparameters:
  learning_rate : 1e-4
- batch_size : 32
-data_dir : "/home/frederik/UncertainDepths/data/external/KITTI/"
+ batch_size : 6
+data_fetching_params:
+  data_dir : "/home/frederik/UncertainDepths/data/external/KITTI/"
+  num_workers: 6

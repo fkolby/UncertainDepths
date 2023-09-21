@@ -6,6 +6,6 @@ def shape_and_print_tensor(x: torch.Tensor,log):
     return 0
 
 
-def debugxshape(x: torch.Tensor, log, in_debug = True):
+def debugxshape(x: torch.Tensor, in_debug = False):
     if in_debug:
-        log.info(x.shape)
+        print(x.shape)

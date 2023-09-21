@@ -21,14 +21,14 @@ import hydra
 import logging
 
 
-log = logging.getLogger(__name__)
+# log = logging.getLogger(__name__)
 in_debug = True
 
 
 # BatchXColorXHeightXWidth
 class DoubleConv(nn.Sequential):
     # no_padding is original way, but we prefer to include padding.
-    def __init__(self, in_chan, out_chan, include_padding=False):
+    def __init__(self, in_chan, out_chan, include_padding=True):
         super().__init__(
             nn.Conv2d(
                 in_chan, out_chan, kernel_size=3, padding=int(include_padding)
@@ -53,15 +53,15 @@ class UpSample(nn.Sequential):
 
 class CropAndConcatenateOp(nn.Module):
     def forward(self, x: torch.Tensor, contracting_x: torch.Tensor):
-        contracting_x = torchvision.transforms.CenterCrop(
-             (x.shape[2], x.shape[3])
-        )(contracting_x)
+        # contracting_x = torchvision.transforms.CenterCrop(
+        #     (x.shape[2], x.shape[3])
+        # )(contracting_x)
         x = torch.cat([x, contracting_x], dim=1)
         return x
 
 
 class BaseUNet(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, in_debug:bool = False):
+    def __init__(self, in_channels: int, out_channels: int, in_debug: bool = False):
         super().__init__()
         self.down_conv = nn.ModuleList(
             [DoubleConv(i, o) for (i, o) in [(in_channels, 64), (64, 128), (128, 256), (256, 512)]]
@@ -81,46 +81,40 @@ class BaseUNet(nn.Module):
 
     def forward(self, x: torch.Tensor):
         pass_through = []
-        debugxshape(x, in_debug =True )
-        print(x)
+        debugxshape(x, in_debug=self.in_debug)
 
         for i in range(len(self.down_conv)):  # contract
             x = self.down_conv[i](x)
-            debugxshape(x, in_debug = self.in_debug)
+            debugxshape(x, in_debug=self.in_debug)
             pass_through.append(x)
-            debugxshape(x, in_debug = self.in_debug)
+            debugxshape(x, in_debug=self.in_debug)
             x = self.down_sample[i](x)
-            debugxshape(x, in_debug = self.in_debug)
+            debugxshape(x, in_debug=self.in_debug)
 
         x = self.middle_conv(x)
-        debugxshape(x,in_debug=self.in_debug)
+        debugxshape(x, in_debug=self.in_debug)
 
         for i in range(len(self.up_conv)):  # upsample and scale
             x = self.up_sample[i](x)
-            debugxshape(x,in_debug=self.in_debug)
+            debugxshape(x, in_debug=self.in_debug)
             x = self.concat[i](x, contracting_x=pass_through.pop())
-            debugxshape(x,in_debug=self.in_debug)
+            debugxshape(x, in_debug=self.in_debug)
             x = self.up_conv[i](x)
-            debugxshape(x,in_debug=self.in_debug)
+            debugxshape(x, in_debug=self.in_debug)
 
         x = self.final_conv(x)
-        debugxshape(x,in_debug=self.in_debug)
+        debugxshape(x, in_debug=self.in_debug)
 
         return x
 
 
 if __name__ == "__main__":
-    x = torch.rand(8, 3, 572, 572)
-    x = BaseUNet(3, 1, in_debug = True)(x)
-    debugxshape(x,in_debug=True)
-
-    a_based_u_net = BaseUNet(3, 1, in_debug = True)
-    summary(a_based_u_net, (1, 3, 572, 572))
+    a_based_u_net = BaseUNet(3, 1, in_debug=True)
+    summary(a_based_u_net, (1, 3, 1024, 608))
 
     from torchview import draw_graph
 
-    graph_of_model = draw_graph(a_based_u_net, input_size=(1, 3, 572, 572))
+    graph_of_model = draw_graph(a_based_u_net, input_size=(1, 3, 1024, 608))
     graph_of_model.visual_graph
 
     graph_of_model.visual_graph.view()
-
