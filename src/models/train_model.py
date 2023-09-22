@@ -92,6 +92,8 @@ def main(cfg: DictConfig):
     )
     trainer = pl.Trainer(max_epochs=1, logger=logger, limit_train_batches=0.01)
     transform = transforms.Compose([transforms.PILToTensor(),
+                                    transforms.RandomHorizontalFlip(p=0.5),
+                                    transforms.Lambda(lambda x: x/255),
                                     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),#normalize using imagenet values, as I have yet not calced it for KITTI.
                                     transforms.Pad(padding=(3, 4, 3, 5))])
     datamodule = KITTIDataModule(
