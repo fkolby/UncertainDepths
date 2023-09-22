@@ -1,4 +1,5 @@
 import logging
+import torch
 import wandb
 from torchvision import transforms
 from lightning.pytorch import loggers
@@ -40,6 +41,16 @@ class KITTI_depth_lightning_module(pl.LightningModule):
                             "RGB",
                             caption=f"Image {self.tstep} (preds)",
                         ),
+                        wandb.Image(
+                            transforms.ToPILImage()((y-preds)[0, :, :, :].squeeze(dim=0)),
+                            "RGB",
+                            caption=f"Image {self.tstep} (y-preds)",
+                        ),
+                        wandb.Image(
+                            transforms.ToPILImage()(torch.abs(y-preds)[0, :, :, :].squeeze(dim=0)),
+                            "RGB",
+                            caption=f"Image {self.tstep} abs(y-preds)",
+                        ),
                     ]
                 }
             )
@@ -74,14 +85,15 @@ def main(cfg: DictConfig):
     logger = loggers.WandbLogger(project="UncertainDepths")
     log = logging.getLogger(__name__)
     log.info(OmegaConf.to_yaml(cfg))
-    loss_function = nn.functional.mse_loss
     model = KITTI_depth_lightning_module(
         model=BaseUNet(in_channels=3, out_channels=1),
-        loss_function=loss_function,
+        loss_function=nn.functional.mse_loss,
         learning_rate=cfg.hyperparameters.learning_rate,
     )
     trainer = pl.Trainer(max_epochs=1, logger=logger, limit_train_batches=0.01)
-    transform = transforms.Compose([transforms.PILToTensor(), transforms.Pad(padding=(3, 4, 3, 5))])
+    transform = transforms.Compose([transforms.PILToTensor(),
+                                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),#normalize using imagenet values, as I have yet not calced it for KITTI.
+                                    transforms.Pad(padding=(3, 4, 3, 5))])
     datamodule = KITTIDataModule(
         data_dir=cfg.data_fetching_params.data_dir,
         batch_size=cfg.hyperparameters.batch_size,
@@ -89,9 +101,9 @@ def main(cfg: DictConfig):
         target_transform=transform,
         num_workers=cfg.data_fetching_params.num_workers,
     )
-
+    
     datamodule.setup(stage="fit")
-    trainer.fit(model=model, train_dataloaders=datamodule.train_dataloader())
+    trainer.fit(model=model, train_dataloaders=datamodule.train_dataloader(),val_dataloaders= datamodule.val_dataloader())
 
 
 if __name__ == "__main__":
