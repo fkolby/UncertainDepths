@@ -30,10 +30,10 @@ class KITTI_depth_lightning_module(pl.LightningModule):
         x, y = batch
         pred = self.model(x)
         print(f"x: {x.shape} y: {y.shape}, pred: {pred.shape}")
-        #img=torch.squeeze(x[0, :, :, :].detach(), dim=0)
-        #depth=torch.squeeze(y[0, :, :, :].detach(), dim=0)
-        #pred=torch.squeeze(pred[0, :, :, :].detach(), dim=0)
-        #print(img.shape,depth.shape,pred.shape)
+        # img=torch.squeeze(x[0, :, :, :].detach(), dim=0)
+        # depth=torch.squeeze(y[0, :, :, :].detach(), dim=0)
+        # pred=torch.squeeze(pred[0, :, :, :].detach(), dim=0)
+        # print(img.shape,depth.shape,pred.shape)
         if self.tstep % 10 == 0:
             log_images(
                 img=torch.squeeze(x[0, :, :, :].detach(), dim=0),

@@ -42,11 +42,13 @@ def log_images(img, depth, pred, vmin, vmax, step):
                     "RGB",
                     caption=f"Image {step} (pred)",
                 ),
-                wandb.Image(depthdiff,
+                wandb.Image(
+                    depthdiff,
                     "RGB",
                     caption=f"Image {step} (depth-pred)",
                 ),
-                wandb.Image(absdepthdiff,
+                wandb.Image(
+                    absdepthdiff,
                     "RGB",
                     caption=f"Image {step} abs(depth-pred)",
                 ),
