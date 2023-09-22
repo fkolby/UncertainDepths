@@ -9,7 +9,9 @@
 Create visualization tools
 
 
-Normalize tensor before it goes into network
 Get to GPU.
 Mask tensor before calcing loss. 
 Visualize difference between pics.
+Get color in image
+Read papers from KITTI.
+Resize images and val loader
