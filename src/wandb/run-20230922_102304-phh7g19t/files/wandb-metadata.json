@@ -1,0 +1,80 @@
+{
+    "os": "Linux-5.15.0-73-generic-x86_64-with-glibc2.35",
+    "python": "3.11.5",
+    "heartbeatAt": "2023-09-22T08:23:05.643790",
+    "startedAt": "2023-09-22T08:23:04.418544",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "/home/frederik/UncertainDepths/src/models/train_model.py",
+    "codePathLocal": "models/train_model.py",
+    "codePath": "src/models/train_model.py",
+    "git": {
+        "remote": "git@github.com:fkolby/UncertainDepths.git",
+        "commit": "bec9d46eed2f46af279b5efc58b8448c687afb09"
+    },
+    "email": "frederikkoelby@gmail.com",
+    "root": "/home/frederik/UncertainDepths",
+    "host": "frederik-Swift-SF314-511",
+    "username": "frederik",
+    "executable": "/home/frederik/anaconda3/envs/UncertainDepths/bin/python3",
+    "cpu_count": 4,
+    "cpu_count_logical": 8,
+    "cpu_freq": {
+        "current": 2644.996125,
+        "min": 400.0,
+        "max": 4700.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 2800.0,
+            "min": 400.0,
+            "max": 4700.0
+        },
+        {
+            "current": 2800.0,
+            "min": 400.0,
+            "max": 4700.0
+        },
+        {
+            "current": 2800.0,
+            "min": 400.0,
+            "max": 4700.0
+        },
+        {
+            "current": 2800.0,
+            "min": 400.0,
+            "max": 4700.0
+        },
+        {
+            "current": 1232.786,
+            "min": 400.0,
+            "max": 4700.0
+        },
+        {
+            "current": 2800.0,
+            "min": 400.0,
+            "max": 4700.0
+        },
+        {
+            "current": 2800.0,
+            "min": 400.0,
+            "max": 4700.0
+        },
+        {
+            "current": 2800.0,
+            "min": 400.0,
+            "max": 4700.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 467.8895797729492,
+            "used": 428.6124496459961
+        }
+    },
+    "memory": {
+        "total": 15.425159454345703
+    }
+}

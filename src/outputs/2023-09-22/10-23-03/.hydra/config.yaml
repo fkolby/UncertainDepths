@@ -1,0 +1,6 @@
+hyperparameters:
+  learning_rate: 0.0003
+  batch_size: 6
+data_fetching_params:
+  data_dir: /home/frederik/UncertainDepths/data/external/KITTI/
+  num_workers: 6
