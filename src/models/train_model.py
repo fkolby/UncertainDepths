@@ -47,6 +47,7 @@ class KITTI_depth_lightning_module(pl.LightningModule):
         loss = self.loss_function(pred, y)
 
         self.log("train_loss", loss)
+        wandb.log({"train_loss": loss}, step=self.tstep)
         return loss
 
     def validation_step(self, batch, batch_idx):
