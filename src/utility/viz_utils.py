@@ -45,8 +45,7 @@ def log_images(img, depth, pred, vmin, vmax, step):
     depth = colorize(depth, vmin=vmin, vmax=vmax)
 
     print(np.isclose(np.array(pred), np.array(0)))
-    pdb.set_trace()
-    pred = colorize(pred * 50, vmin=vmin, vmax=vmax)
+    pred = colorize(pred, vmin=vmin, vmax=vmax)
     wandb.log(
         {
             "images": [

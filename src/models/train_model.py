@@ -34,7 +34,7 @@ class KITTI_depth_lightning_module(pl.LightningModule):
         # depth=torch.squeeze(y[0, :, :, :].detach(), dim=0)
         # pred=torch.squeeze(pred[0, :, :, :].detach(), dim=0)
         # print(img.shape,depth.shape,pred.shape)
-        if self.tstep % 10 == 0:
+        if self.tstep % 2 == 0:
             log_images(
                 img=torch.squeeze(x[0, :, :, :].detach(), dim=0),
                 depth=torch.squeeze(y[0, :, :, :].detach(), dim=0),
@@ -43,8 +43,9 @@ class KITTI_depth_lightning_module(pl.LightningModule):
                 vmax=self.max_depth,
                 step=self.tstep,
             )
+        mask = torch.logical_and(y > self.min_depth, y < self.max_depth)
         self.tstep += 1
-        loss = self.loss_function(pred, y)
+        loss = self.loss_function(pred * mask, y * mask)
 
         self.log("train_loss", loss)
         wandb.log({"train_loss": loss}, step=self.tstep)
