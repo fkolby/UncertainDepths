@@ -10,4 +10,4 @@ dataset_params:
   input_height: 352
   input_width: 704
 trainer_args:
-  max_epoch: 20 
+  max_epochs: 20 
