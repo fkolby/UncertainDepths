@@ -28,24 +28,20 @@ class KITTI_depth_lightning_module(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        pred = self.model(x)
-        print(f"x: {x.shape} y: {y.shape}, pred: {pred.shape}")
-        # img=torch.squeeze(x[0, :, :, :].detach(), dim=0)
-        # depth=torch.squeeze(y[0, :, :, :].detach(), dim=0)
-        # pred=torch.squeeze(pred[0, :, :, :].detach(), dim=0)
-        # print(img.shape,depth.shape,pred.shape)
+        preds = self.model(x)
+        print(f"x: {x.shape} y: {y.shape}, pred: {preds.shape}")
         if self.tstep % 2 == 0:
             log_images(
                 img=torch.squeeze(x[0, :, :, :].detach(), dim=0),
                 depth=torch.squeeze(y[0, :, :, :].detach(), dim=0),
-                pred=torch.squeeze(pred[0, :, :, :].detach(), dim=0),
+                pred=torch.squeeze(preds[0, :, :, :].detach(), dim=0),
                 vmin=self.min_depth,
                 vmax=self.max_depth,
                 step=self.tstep,
             )
-        mask = torch.logical_and(y > self.min_depth, y < self.max_depth)
         self.tstep += 1
-        loss = self.loss_function(pred * mask, y * mask)
+        mask = torch.logical_and(y > self.min_depth, y < self.max_depth)
+        loss = self.loss_function(preds * mask, y * mask)
 
         self.log("train_loss", loss)
         wandb.log({"train_loss": loss}, step=self.tstep)
@@ -54,14 +50,17 @@ class KITTI_depth_lightning_module(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x, y = batch
         preds = self.model(x)
-        loss = self.loss_function(preds, y)
+        mask = torch.logical_and(y > self.min_depth, y < self.max_depth)
+        loss = self.loss_function(preds * mask, y * mask)
+
         self.log("validation_loss", loss)
         return loss
 
     def test_step(self, batch, batch_idx):
         x, y = batch
         preds = self.model(x)
-        loss = self.loss_function(preds, y)
+        mask = torch.logical_and(y > self.min_depth, y < self.max_depth)
+        loss = self.loss_function(preds * mask, y * mask)
         self.log("TEST loss", loss)
         return loss
 
