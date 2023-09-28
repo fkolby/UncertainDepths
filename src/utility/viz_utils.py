@@ -44,7 +44,6 @@ def log_images(img, depth, pred, vmin, vmax, step):
     absdepthdiff = colorize(torch.abs(depth - pred), vmin=vmin, vmax=vmax)
     depth = colorize(depth, vmin=vmin, vmax=vmax)
 
-    print(np.isclose(np.array(pred), np.array(0)))
     pred = colorize(pred, vmin=vmin, vmax=vmax)
     wandb.log(
         {

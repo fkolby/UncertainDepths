@@ -1,17 +1,21 @@
-0. Setup hydra
-1. Download data.
-2. Setup pre-commits.
-3. Get data in data-folder.
-4. Create dataloaders
-5. Setup pytorch lighntning
-
-
-Create visualization tools
-
-
 Get to GPU.
-Mask tensor before calcing loss. 
-Visualize difference between pics.
-Get color in image
 Read papers from KITTI.
 Resize images and val loader
+
+Random crop to 352x704
+Read adabins model through for resizing.
+Get Kitti-eigen data split.
+Implementer usikkerhed fra library.
+
+
+STRETCH-------------
+Understand kb-crop.
+
+
+
+
+Questions:
+
+Masked loss - matcher ikke super godt med at vi har diskuteret MSE-loss. Har ikke læst teorien, endnu.
+Validation sizing error.
+Diskuter todo-list

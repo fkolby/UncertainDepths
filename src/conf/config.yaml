@@ -1,3 +1,4 @@
+in_debug : True
 hyperparameters:
  learning_rate : 3e-4
  batch_size : 4
@@ -6,3 +7,7 @@ dataset_params:
   num_workers: 2
   min_depth : 1e-3
   max_depth : 80
+  input_height: 352
+  input_width: 704
+trainer_args:
+  max_epoch: 20 
