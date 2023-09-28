@@ -19,7 +19,17 @@ import os
 
 
 class KITTI_depth_lightning_module(pl.LightningModule):
-    def __init__(self, model, loss_function, learning_rate, min_depth, max_depth, input_height, input_width, batch_size):
+    def __init__(
+        self,
+        model,
+        loss_function,
+        learning_rate,
+        min_depth,
+        max_depth,
+        input_height,
+        input_width,
+        batch_size,
+    ):
         super().__init__()
         self.model = model
         self.loss_function = loss_function
@@ -33,8 +43,12 @@ class KITTI_depth_lightning_module(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        
-        assert(x[:,0,:,:].shape==y[:,0,:,:].shape==torch.Size((self.batch_size,self.input_height,self.input_width)))
+
+        assert (
+            x[:, 0, :, :].shape
+            == y[:, 0, :, :].shape
+            == torch.Size((self.batch_size, self.input_height, self.input_width))
+        )
         preds = self.model(x)
         print(f"TRAIN:  x: {x.shape} y: {y.shape}, pred: {preds.shape}, tstep: {self.tstep}")
         if self.tstep % 2 == 0:
@@ -46,7 +60,9 @@ class KITTI_depth_lightning_module(pl.LightningModule):
                 vmax=self.max_depth,
                 step=self.tstep,
             )
-        mask = torch.logical_and(y > self.min_depth, y < self.max_depth) #perhaps also punish above maxdepth during training?
+        mask = torch.logical_and(
+            y > self.min_depth, y < self.max_depth
+        )  # perhaps also punish above maxdepth during training?
         loss = self.loss_function(preds * mask, y * mask)
 
         self.log("train_loss", loss)
@@ -56,8 +72,12 @@ class KITTI_depth_lightning_module(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        
-        assert(x[:,0,:,:].shape==y[:,0,:,:].shape==torch.Size((self.batch_size,self.input_height,self.input_width)))
+
+        assert (
+            x[:, 0, :, :].shape
+            == y[:, 0, :, :].shape
+            == torch.Size((self.batch_size, self.input_height, self.input_width))
+        )
         preds = self.model(x)
         print(f"VALIDATION: x: {x.shape} y: {y.shape}, pred: {preds.shape}")
         mask = torch.logical_and(y > self.min_depth, y < self.max_depth)
@@ -80,20 +100,20 @@ class KITTI_depth_lightning_module(pl.LightningModule):
         return optimizer
 
 
-
-
-
-
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
 def main(cfg: DictConfig):
     if cfg.in_debug:
         pdb.set_trace()
         os.environ["WANDB_MODE"] = "disabled"
-        trainer_args = {"max_epochs":1, "limit_val_batches": 0.001, "limit_train_batches":0.001, "fast_dev_run" : True}
+        trainer_args = {
+            "max_epochs": 1,
+            "limit_val_batches": 0.001,
+            "limit_train_batches": 0.001,
+            "fast_dev_run": True,
+        }
     else:
         os.environ["WANDB_MODE"] = "online"
         trainer_args = {"max_epochs": cfg.trainer_args.max_epochs}
-
 
     wandb.config = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
     logger = loggers.WandbLogger(project="UncertainDepths")
@@ -105,9 +125,9 @@ def main(cfg: DictConfig):
         learning_rate=cfg.hyperparameters.learning_rate,
         min_depth=cfg.dataset_params.min_depth,
         max_depth=cfg.dataset_params.max_depth,
-        input_height = cfg.dataset_params.input_height,
-        input_width = cfg.dataset_params.input_width,
-        batch_size = cfg.hyperparameters.batch_size,
+        input_height=cfg.dataset_params.input_height,
+        input_width=cfg.dataset_params.input_width,
+        batch_size=cfg.hyperparameters.batch_size,
     )
     trainer = pl.Trainer(logger=logger, **trainer_args)
     transform = transforms.Compose(
@@ -117,14 +137,18 @@ def main(cfg: DictConfig):
             transforms.Normalize(
                 mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
             ),  # normalize using imagenet values, as I have yet not calced it for KITTI.
-            transforms.RandomCrop((cfg.dataset_params.input_height,cfg.dataset_params.input_width))
+            transforms.RandomCrop(
+                (cfg.dataset_params.input_height, cfg.dataset_params.input_width)
+            ),
         ]
     )
     target_transform = transforms.Compose(
         [
             transforms.PILToTensor(),
-            transforms.Lambda(lambda x: x / 256), # 256 as per devkit
-            transforms.RandomCrop((cfg.dataset_params.input_height,cfg.dataset_params.input_width))
+            transforms.Lambda(lambda x: x / 256),  # 256 as per devkit
+            transforms.RandomCrop(
+                (cfg.dataset_params.input_height, cfg.dataset_params.input_width)
+            ),
         ]
     )
     datamodule = KITTIDataModule(
@@ -139,7 +163,8 @@ def main(cfg: DictConfig):
     trainer.fit(
         model=model,
         train_dataloaders=datamodule.train_dataloader(),
-        val_dataloaders= datamodule.val_dataloader())
+        val_dataloaders=datamodule.val_dataloader(),
+    )
 
 
 if __name__ == "__main__":
