@@ -1,10 +1,10 @@
 in_debug : True
 hyperparameters:
  learning_rate : 3e-4
- batch_size : 4
+ batch_size : 8 
 dataset_params:
-  data_dir : "/home/frederik/UncertainDepths/data/external/KITTI/"
-  num_workers: 2
+  data_dir : "/home/jbv415/UncertainDepths/data/external/KITTI/"
+  num_workers: 8
   min_depth : 1e-3
   max_depth : 80
   input_height: 352

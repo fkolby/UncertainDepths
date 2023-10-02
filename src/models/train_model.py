@@ -43,15 +43,17 @@ class KITTI_depth_lightning_module(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-
-        assert (
-            x[:, 0, :, :].shape
-            == y[:, 0, :, :].shape
-            == torch.Size((self.batch_size, self.input_height, self.input_width))
-        )
+        try:
+             assert (
+            (x[:, 0, :, :].shape
+             == y[:, 0, :, :].shape) & (x[0,0,:,:].shape ==
+            torch.Size((self.input_height, self.input_width))))
+        
+        except:
+            pdb.set_trace()
         preds = self.model(x)
         print(f"TRAIN:  x: {x.shape} y: {y.shape}, pred: {preds.shape}, tstep: {self.tstep}")
-        if self.tstep % 2 == 0:
+        if self.tstep % 10 == 0:
             log_images(
                 img=torch.squeeze(x[0, :, :, :].detach(), dim=0),
                 depth=torch.squeeze(y[0, :, :, :].detach(), dim=0),
@@ -74,9 +76,9 @@ class KITTI_depth_lightning_module(pl.LightningModule):
         x, y = batch
 
         assert (
-            x[:, 0, :, :].shape
-            == y[:, 0, :, :].shape
-            == torch.Size((self.batch_size, self.input_height, self.input_width))
+            (x[:, 0, :, :].shape
+             == y[:, 0, :, :].shape) & (x[0,0,:,:].shape ==
+            torch.Size((self.input_height, self.input_width)))
         )
         preds = self.model(x)
         print(f"VALIDATION: x: {x.shape} y: {y.shape}, pred: {preds.shape}")
@@ -137,18 +139,12 @@ def main(cfg: DictConfig):
             transforms.Normalize(
                 mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
             ),  # normalize using imagenet values, as I have yet not calced it for KITTI.
-            transforms.RandomCrop(
-                (cfg.dataset_params.input_height, cfg.dataset_params.input_width)
-            ),
         ]
     )
     target_transform = transforms.Compose(
         [
             transforms.PILToTensor(),
             transforms.Lambda(lambda x: x / 256),  # 256 as per devkit
-            transforms.RandomCrop(
-                (cfg.dataset_params.input_height, cfg.dataset_params.input_width)
-            ),
         ]
     )
     datamodule = KITTIDataModule(
@@ -157,6 +153,8 @@ def main(cfg: DictConfig):
         transform=transform,
         target_transform=target_transform,
         num_workers=cfg.dataset_params.num_workers,
+        input_height=cfg.dataset_params.input_height,
+        input_width=cfg.dataset_params.input_width,
     )
 
     datamodule.setup(stage="fit")

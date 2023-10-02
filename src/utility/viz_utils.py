@@ -9,6 +9,7 @@ from torchvision import transforms
 ## function found from ADABINS (https://github.com/shariqfarooq123/AdaBins/blob/main/utils.pdepth)
 def colorize(value, vmin=10, vmax=1000, cmap="plasma"):
     # normalize
+    value = value.cpu()
     vmin = value.min() if vmin is None else vmin
     vmax = value.max() if vmax is None else vmax
     if vmin != vmax:
@@ -31,7 +32,7 @@ def denormalize(x, device="cpu"):
     mean = torch.Tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1).to(device)
     std = torch.Tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1).to(device)
     if len(x.shape) == 3:
-        return (x.unsqueeze(0) * std + mean).squeeze()
+        return (x.unsqueeze(0).to(device=device) * std + mean).squeeze()
     elif len(x.shape) == 4:
         return x * std + mean
     else:

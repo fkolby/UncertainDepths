@@ -1,21 +1,23 @@
-Get to GPU.
-Read papers from KITTI.
-Resize images and val loader
-
-Random crop to 352x704
-Read adabins model through for resizing.
-Get Kitti-eigen data split.
-Implementer usikkerhed fra library.
+.  Get to GPU.
+X  Read papers from KITTI.
+X  Resize images and val loader
+X  Random crop to 352x704
+.  Read adabins model through for resizing.
+X  Get Kitti-eigen data split.
+.  Implementer usikkerhed fra Frederiks library.
 
 
 STRETCH-------------
 Understand kb-crop.
-
+Data augmentation; flip/hue/saturation/color/rotate
+learning rate scheduler
+Get lvim set up on slurm cluster - perhaps by exposing conf files?
 
 
 
 Questions:
-
+Diskuter loss/billeder nuværende niveau. (Underlig kasse?)
+GPU-adgang (har ikke prøvet KU-slurm endnu.)
+Loss funktioner - skal netværket være trænet ground-up med det?
 Masked loss - matcher ikke super godt med at vi har diskuteret MSE-loss. Har ikke læst teorien, endnu.
-Validation sizing error.
-Diskuter todo-list
+Diskuter todo-list/plan herfra.

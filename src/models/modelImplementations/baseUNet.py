@@ -110,7 +110,7 @@ class BaseUNet(nn.Module):
 
 if __name__ == "__main__":
     a_based_u_net = BaseUNet(3, 1, in_debug=True)
-    summary(a_based_u_net, (1, 3, 1024, 608))
+    summary(a_based_u_net, (1, 3, 704, 352))
 
     from torchview import draw_graph
 
