@@ -36,7 +36,6 @@ class SkipConnect(nnj.AbstractJacobian, nn.Module):
 class Flatten(nnj.AbstractJacobian, nn.Module):
     #NOT SURE ABOUT INIT: NOT INCLUDED IN MARCO?!
     def __init__(self):
-        super().__init__()
         self._n_params=0
 
     def forward(self, x: Tensor):
@@ -52,6 +51,42 @@ class Flatten(nnj.AbstractJacobian, nn.Module):
             return None
         else:
             raise NotImplementedError
+class Conv2d(nnj.AbstractJacobian, nn.Conv2d):
+    def __init__(self,
+    in_channels,
+    out_channels,
+    kernel_size,
+    stride=1,
+    padding=0,
+    dilation=1,
+    groups= 1,
+    bias=True,
+    padding_mode="zeros",
+    ):
+        super(self, Conv2d).__init__(
+            in_channels=in_channels,
+            out_channels = out_channels,
+            kernel_size=kernel_size,
+            stride=stride,
+            padding=padding,
+            dilation=dilation,
+            groups=groups,
+            bias=bias,
+            padding_mode=padding_mode
+        )
+        
+    
+    @torch.no_grad()
+    def jacobian(self, x: torch.Tensor, val: Union[None, torch.Tensor], wrt : Literal["input","weight"] = "input"):
+        if val == None:
+            return self.forward(x)
+
+        if wrt == "weight":
+            #Non parametric layer, so does not have any wrt weight
+            return None
+        else:
+            raise NotImplementedError
+
 
 pdb.set_trace()
 class UNet_stochman_64(torch.nn.Module):
