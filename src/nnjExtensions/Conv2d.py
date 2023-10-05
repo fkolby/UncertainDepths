@@ -23,19 +23,27 @@ class Conv2d(AbstractJacobian, nn.Conv2d):
         padding_mode="zeros",
     ):
         super(Conv2d, self).__init__(
-            in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias, padding_mode
+            in_channels,
+            out_channels,
+            kernel_size,
+            stride,
+            padding,
+            dilation,
+            groups,
+            bias,
+            padding_mode,
         )
-        
+
         self._n_params = sum([torch.numel(w) for w in list(self.parameters())])
         dw_padding_h = compute_reversed_padding(self.padding[0], kernel_size=self.kernel_size[0])
         dw_padding_w = compute_reversed_padding(self.padding[1], kernel_size=self.kernel_size[1])
         self.dw_padding = (dw_padding_h, dw_padding_w)
 
     @torch.no_grad()
-    def jacobian(self,x:Tensor, val: Union[None, Tensor], wrt= Literal["weight", "input"]):
+    def jacobian(self, x: Tensor, val: Union[None, Tensor], wrt=Literal["weight", "input"]):
         if wrt == "input":
             return _jacobian_wrt_input(x, val)
-        
+
         elif wrt == "weight":
             if val is None:
                 return self.forward(x)
@@ -76,7 +84,7 @@ class Conv2d(AbstractJacobian, nn.Conv2d):
         jacobian = jacobian.reshape(b, c2 * h2 * w2, c1 * h1 * w1)
 
         return jacobian
-    
+
     @torch.no_grad()
     def _jacobian_wrt_weight(self, x: Tensor, val: Tensor) -> Tensor:
         b, c1, h1, w1 = x.shape
@@ -86,14 +94,18 @@ class Conv2d(AbstractJacobian, nn.Conv2d):
 
         output_identity = torch.eye(c2 * c1 * kernel_h * kernel_w)
         # expand rows as [(input channels)x(kernel height)x(kernel width)] cubes, one for each output channel
-        output_identity = output_identity.reshape(c2, c1, kernel_h, kernel_w, c2 * c1 * kernel_h * kernel_w)
+        output_identity = output_identity.reshape(
+            c2, c1, kernel_h, kernel_w, c2 * c1 * kernel_h * kernel_w
+        )
 
         reversed_inputs = torch.flip(x, [-2, -1]).movedim(0, 1)
 
         # convolve each base element and compute the jacobian
         jacobian = (
             F.conv_transpose2d(
-                output_identity.movedim((1, 2, 3), (-3, -2, -1)).reshape(-1, c1, kernel_h, kernel_w),
+                output_identity.movedim((1, 2, 3), (-3, -2, -1)).reshape(
+                    -1, c1, kernel_h, kernel_w
+                ),
                 weight=reversed_inputs,
                 bias=None,
                 stride=self.stride,
@@ -115,7 +127,9 @@ class Conv2d(AbstractJacobian, nn.Conv2d):
         return jacobian
 
     @torch.no_grad()
-    def _jvp(self, x: Tensor, val: Union[Tensor, None], vector: Tensor, wrt: str = "input") -> Tensor:
+    def _jvp(
+        self, x: Tensor, val: Union[Tensor, None], vector: Tensor, wrt: str = "input"
+    ) -> Tensor:
         """
         jacobian vector product
         """
@@ -125,7 +139,9 @@ class Conv2d(AbstractJacobian, nn.Conv2d):
             raise NotImplementedError
 
     @torch.no_grad()
-    def _vjp(self, x: Tensor, val: Union[Tensor, None], vector: Tensor, wrt: str = "input") -> Tensor:
+    def _vjp(
+        self, x: Tensor, val: Union[Tensor, None], vector: Tensor, wrt: str = "input"
+    ) -> Tensor:
         """
         vector jacobian product
         """
@@ -137,7 +153,10 @@ class Conv2d(AbstractJacobian, nn.Conv2d):
             else:
                 b_term = torch.einsum("bchw->bc", vector.reshape(val.shape))
                 return torch.cat(
-                    [self._jacobian_wrt_weight_mult_left(x, val, vector.unsqueeze(1)).squeeze(1), b_term],
+                    [
+                        self._jacobian_wrt_weight_mult_left(x, val, vector.unsqueeze(1)).squeeze(1),
+                        b_term,
+                    ],
                     dim=1,
                 )
 
@@ -184,7 +203,9 @@ class Conv2d(AbstractJacobian, nn.Conv2d):
             else:
                 b, c, h, w = val.shape
                 b_term = torch.einsum("bvchw->bvc", matrix.reshape(b, -1, c, h, w))
-                return torch.cat([self._jacobian_wrt_weight_mult_left(x, val, matrix), b_term], dim=2)
+                return torch.cat(
+                    [self._jacobian_wrt_weight_mult_left(x, val, matrix), b_term], dim=2
+                )
 
     @torch.no_grad()
     def _jTmjp(

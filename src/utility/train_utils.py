@@ -2,11 +2,13 @@ import matplotlib
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import pdb
-#matplotlib.use("TkAgg")
+
+# matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import torch
 import os
 import random
+
 
 def retry(how_many_tries=2):
     def wrapper(func):
@@ -32,9 +34,10 @@ def plot_and_save_tensor_as_fig(tensor: torch.Tensor, figname: str) -> None:
         plt.imshow(tensor.permute(1, 2, 0))
     plt.savefig(figname + ".png")
 
-#Shamelessly stolen from adabins repo( https://github.com/shariqfarooq123/AdaBins/blob/main/dataloader.py)
+
+# Shamelessly stolen from adabins repo( https://github.com/shariqfarooq123/AdaBins/blob/main/dataloader.py)
 def random_crop(img, depth, height, width):
-    #not terribly good - could be updated so randint goes from - to +, in order not to always include 0,0 e.g.
+    # not terribly good - could be updated so randint goes from - to +, in order not to always include 0,0 e.g.
     try:
         assert img.shape[1] >= height
         assert img.shape[2] >= width
@@ -44,6 +47,6 @@ def random_crop(img, depth, height, width):
         pdb.set_trace()
     x = random.randint(0, img.shape[2] - width)
     y = random.randint(0, img.shape[1] - height)
-    img = img[:,y:y + height, x:x + width]
-    depth = depth[:,y:y + height, x:x + width]
+    img = img[:, y : y + height, x : x + width]
+    depth = depth[:, y : y + height, x : x + width]
     return img, depth

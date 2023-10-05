@@ -5,6 +5,7 @@ from nnj import Sequential
 
 from typing import Optional, Tuple, List, Union
 
+
 class SkipConnection(AbstractJacobian, nn.Module):
     def __init__(self, *args, add_hooks: bool = False):
         super().__init__()
@@ -145,7 +146,10 @@ class SkipConnection(AbstractJacobian, nn.Module):
             )
             jTmps = tuple(
                 self._F._mjp(
-                    x_i, None if val_i is None else val_i[:, l:], m[:, l:, :l].transpose(1, 2), wrt=wrt
+                    x_i,
+                    None if val_i is None else val_i[:, l:],
+                    m[:, l:, :l].transpose(1, 2),
+                    wrt=wrt,
                 ).transpose(1, 2)
                 for x_i, val_i, m in [(x1, val1, m11), (x1, val1, m12), (x2, val2, m22)]
             )

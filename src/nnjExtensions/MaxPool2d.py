@@ -5,6 +5,7 @@ from nnj import AbstractJacobian
 
 from typing import Optional, Tuple, List, Union
 
+
 class MaxPool2d(AbstractJacobian, nn.MaxPool2d):
     def forward(self, input: Tensor):
         val, idx = F.max_pool2d(
@@ -72,7 +73,9 @@ class MaxPool2d(AbstractJacobian, nn.MaxPool2d):
             matrix = matrix.reshape(-1, h1 * w1, *matrix_orig_shape[4:])
             arange_repeated = torch.repeat_interleave(torch.arange(b * c1), h2 * w2).long()
             idx = self.idx.reshape(-1)
-            matrix = matrix[arange_repeated, idx, :, :, :].reshape(*val.shape, *matrix_orig_shape[4:])
+            matrix = matrix[arange_repeated, idx, :, :, :].reshape(
+                *val.shape, *matrix_orig_shape[4:]
+            )
             return matrix
         elif wrt == "weight":
             # non parametric layer has no jacobian with respect to weight
@@ -96,11 +99,15 @@ class MaxPool2d(AbstractJacobian, nn.MaxPool2d):
                 .reshape(b * c1 * c1, h2 * w2, h2 * w2)
             )
             # indexes for batch, channel and row
-            arange_repeated = torch.repeat_interleave(torch.arange(b * c1 * c1 * h2 * w2), h2 * w2).long()
+            arange_repeated = torch.repeat_interleave(
+                torch.arange(b * c1 * c1 * h2 * w2), h2 * w2
+            ).long()
             arange_repeated = arange_repeated.reshape(b * c1 * c1 * h2 * w2, h2 * w2)
             # indexes for col
             idx = self.idx.reshape(b, c1, h2 * w2).unsqueeze(2).expand(-1, -1, h2 * w2, -1)
-            idx_col = idx.unsqueeze(1).expand(-1, c1, -1, -1, -1).reshape(b * c1 * c1 * h2 * w2, h2 * w2)
+            idx_col = (
+                idx.unsqueeze(1).expand(-1, c1, -1, -1, -1).reshape(b * c1 * c1 * h2 * w2, h2 * w2)
+            )
 
             matrix_J = torch.zeros((b * c1 * c1, h2 * w2, h1 * w1), device=matrix.device)
             matrix_J[arange_repeated, idx_col] = matrix
@@ -178,8 +185,14 @@ class MaxPool2d(AbstractJacobian, nn.MaxPool2d):
             if not from_diag and not to_diag:
                 # full -> full
                 return tuple(
-                    self._jacobian_wrt_input_sandwich_full_to_full_batch2(self, x1, val1, idx_left, idx_right, m)
-                    for idx_left, m, idx_right in [(idx1, m11, idx1), (idx1, m12, idx2), (idx1, m22, idx2)]
+                    self._jacobian_wrt_input_sandwich_full_to_full_batch2(
+                        self, x1, val1, idx_left, idx_right, m
+                    )
+                    for idx_left, m, idx_right in [
+                        (idx1, m11, idx1),
+                        (idx1, m12, idx2),
+                        (idx1, m22, idx2),
+                    ]
                 )
             elif from_diag and not to_diag:
                 # diag -> full
@@ -195,21 +208,32 @@ class MaxPool2d(AbstractJacobian, nn.MaxPool2d):
             return None
 
     @torch.no_grad()
-    def _jacobian_wrt_input_sandwich_full_to_full(self, x: Tensor, val: Tensor, tmp: Tensor) -> Tensor:
+    def _jacobian_wrt_input_sandwich_full_to_full(
+        self, x: Tensor, val: Tensor, tmp: Tensor
+    ) -> Tensor:
         b, c1, h1, w1 = x.shape
         c2, h2, w2 = val.shape[1:]
         assert c1 == c2
 
-        tmp = tmp.reshape(b, c1, h2 * w2, c1, h2 * w2).movedim(-2, -3).reshape(b * c1 * c1, h2 * w2, h2 * w2)
+        tmp = (
+            tmp.reshape(b, c1, h2 * w2, c1, h2 * w2)
+            .movedim(-2, -3)
+            .reshape(b * c1 * c1, h2 * w2, h2 * w2)
+        )
         Jt_tmp_J = torch.zeros((b * c1 * c1, h1 * w1, h1 * w1), device=tmp.device)
         # indexes for batch and channel
-        arange_repeated = torch.repeat_interleave(torch.arange(b * c1 * c1), h2 * w2 * h2 * w2).long()
+        arange_repeated = torch.repeat_interleave(
+            torch.arange(b * c1 * c1), h2 * w2 * h2 * w2
+        ).long()
         arange_repeated = arange_repeated.reshape(b * c1 * c1, h2 * w2, h2 * w2)
         # indexes for height and width
         idx = self.idx.reshape(b, c1, h2 * w2).unsqueeze(2).expand(-1, -1, h2 * w2, -1)
         idx_col = idx.unsqueeze(1).expand(-1, c1, -1, -1, -1).reshape(b * c1 * c1, h2 * w2, h2 * w2)
         idx_row = (
-            idx.unsqueeze(2).expand(-1, -1, c1, -1, -1).reshape(b * c1 * c1, h2 * w2, h2 * w2).movedim(-1, -2)
+            idx.unsqueeze(2)
+            .expand(-1, -1, c1, -1, -1)
+            .reshape(b * c1 * c1, h2 * w2, h2 * w2)
+            .movedim(-1, -2)
         )
 
         Jt_tmp_J[arange_repeated, idx_row, idx_col] = tmp
@@ -222,7 +246,9 @@ class MaxPool2d(AbstractJacobian, nn.MaxPool2d):
         return Jt_tmp_J
 
     @torch.no_grad()
-    def _jacobian_wrt_input_sandwich_diag_to_diag(self, x: Tensor, val: Tensor, diag_tmp: Tensor) -> Tensor:
+    def _jacobian_wrt_input_sandwich_diag_to_diag(
+        self, x: Tensor, val: Tensor, diag_tmp: Tensor
+    ) -> Tensor:
         b, c1, h1, w1 = x.shape
         c2, h2, w2 = val.shape[1:]
 
@@ -240,23 +266,36 @@ class MaxPool2d(AbstractJacobian, nn.MaxPool2d):
         return new_tmp.reshape(b, c1 * h1 * w1)
 
     @torch.no_grad()
-    def _jacobian_wrt_input_sandwich_full_to_full_batch2(self, x, val, idx_left, idx_right, matrix: Tensor) -> Tensor:
+    def _jacobian_wrt_input_sandwich_full_to_full_batch2(
+        self, x, val, idx_left, idx_right, matrix: Tensor
+    ) -> Tensor:
         b, c1, h1, w1 = x.shape
         c2, h2, w2 = val.shape[1:]
         assert c1 == c2
 
-        matrix = matrix.reshape(b, c1, h2 * w2, c1, h2 * w2).movedim(-2, -3).reshape(b * c1 * c1, h2 * w2, h2 * w2)
+        matrix = (
+            matrix.reshape(b, c1, h2 * w2, c1, h2 * w2)
+            .movedim(-2, -3)
+            .reshape(b * c1 * c1, h2 * w2, h2 * w2)
+        )
         Jt_matrix_J = torch.zeros((b * c1 * c1, h1 * w1, h1 * w1), device=matrix.device)
         # indexes for batch and channel
-        arange_repeated = torch.repeat_interleave(torch.arange(b * c1 * c1), h2 * w2 * h2 * w2).long()
+        arange_repeated = torch.repeat_interleave(
+            torch.arange(b * c1 * c1), h2 * w2 * h2 * w2
+        ).long()
         arange_repeated = arange_repeated.reshape(b * c1 * c1, h2 * w2, h2 * w2)
         # indexes for height and width
         idx_left = idx_left.reshape(b, c1, h2 * w2).unsqueeze(2).expand(-1, -1, h2 * w2, -1)
         idx_right = idx_right.reshape(b, c1, h2 * w2).unsqueeze(2).expand(-1, -1, h2 * w2, -1)
         idx_row = (
-            idx_left.unsqueeze(2).expand(-1, -1, c1, -1, -1).reshape(b * c1 * c1, h2 * w2, h2 * w2).movedim(-1, -2)
+            idx_left.unsqueeze(2)
+            .expand(-1, -1, c1, -1, -1)
+            .reshape(b * c1 * c1, h2 * w2, h2 * w2)
+            .movedim(-1, -2)
         )
-        idx_col = idx_right.unsqueeze(1).expand(-1, c1, -1, -1, -1).reshape(b * c1 * c1, h2 * w2, h2 * w2)
+        idx_col = (
+            idx_right.unsqueeze(1).expand(-1, c1, -1, -1, -1).reshape(b * c1 * c1, h2 * w2, h2 * w2)
+        )
 
         Jt_matrix_J[arange_repeated, idx_row, idx_col] = matrix
         Jt_matrix_J = (

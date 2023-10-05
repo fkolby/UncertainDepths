@@ -12,83 +12,103 @@ import time
 from torchinfo import summary
 import pdb
 
+
 class SkipConnect(nnj.AbstractJacobian, nn.Module):
-    def __init__(self, *args, add_hooks: bool=False):
+    def __init__(self, *args, add_hooks: bool = False):
         super().__init__()
         self._F = nnj.Sequential(*args, add_hooks=add_hooks)
         self._n_params = 0
 
     def forward(self, x: Tensor):
         return torch.cat([x, self._F(x)], dim=1)
-    
+
     @torch.no_grad()
-    def jacobian(self, x: torch.Tensor, val: Union[None, torch.Tensor], wrt : Literal["input","weight"] = "input"):
+    def jacobian(
+        self,
+        x: torch.Tensor,
+        val: Union[None, torch.Tensor],
+        wrt: Literal["input", "weight"] = "input",
+    ):
         if val == None:
             return self.forward(x)
 
         if wrt == "weight":
-            #Non parametric layer, so does not have any wrt weight
+            # Non parametric layer, so does not have any wrt weight
             return None
         else:
             raise NotImplementedError
 
 
 class Flatten(nnj.AbstractJacobian, nn.Module):
-    #NOT SURE ABOUT INIT: NOT INCLUDED IN MARCO?!
+    # NOT SURE ABOUT INIT: NOT INCLUDED IN MARCO?!
     def __init__(self):
-        self._n_params=0
+        self._n_params = 0
 
     def forward(self, x: Tensor):
-        return x.flatten(start_dim = 1, end_dim = -1)
-    
+        return x.flatten(start_dim=1, end_dim=-1)
+
     @torch.no_grad()
-    def jacobian(self, x: torch.Tensor, val: Union[None, torch.Tensor], wrt : Literal["input","weight"] = "input"):
+    def jacobian(
+        self,
+        x: torch.Tensor,
+        val: Union[None, torch.Tensor],
+        wrt: Literal["input", "weight"] = "input",
+    ):
         if val == None:
             return self.forward(x)
 
         if wrt == "weight":
-            #Non parametric layer, so does not have any wrt weight
+            # Non parametric layer, so does not have any wrt weight
             return None
         else:
             raise NotImplementedError
+
+
 class Conv2d(nnj.AbstractJacobian, nn.Conv2d):
-    def __init__(self,
-    in_channels,
-    out_channels,
-    kernel_size,
-    stride=1,
-    padding=0,
-    dilation=1,
-    groups= 1,
-    bias=True,
-    padding_mode="zeros",
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        kernel_size,
+        stride=1,
+        padding=0,
+        dilation=1,
+        groups=1,
+        bias=True,
+        padding_mode="zeros",
     ):
         super(self, Conv2d).__init__(
             in_channels=in_channels,
-            out_channels = out_channels,
+            out_channels=out_channels,
             kernel_size=kernel_size,
             stride=stride,
             padding=padding,
             dilation=dilation,
             groups=groups,
             bias=bias,
-            padding_mode=padding_mode
+            padding_mode=padding_mode,
         )
-        
-    
+
     @torch.no_grad()
-    def jacobian(self, x: torch.Tensor, val: Union[None, torch.Tensor], wrt : Literal["input","weight"] = "input"):
+    def jacobian(
+        self,
+        x: torch.Tensor,
+        val: Union[None, torch.Tensor],
+        wrt: Literal["input", "weight"] = "input",
+    ):
         if val == None:
             return self.forward(x)
 
         if wrt == "weight":
-            #Non parametric layer, so does not have any wrt weight
+            # Non parametric layer, so does not have any wrt weight
             return None
         else:
             raise NotImplementedError
 
 
 pdb.set_trace()
+
+
 class UNet_stochman_64(torch.nn.Module):
     def __init__(self, in_chan, out_chan):
         super().__init__()
@@ -172,12 +192,10 @@ class UNet_stochman_64(torch.nn.Module):
 
     def forward(self, x):
         return self.stochastic_net(x)
-        
 
 
 if __name__ == "__main__":
-        
-    a_based_u_net = UNet_stochman_64(in_chan = 3, out_chan = 1)
+    a_based_u_net = UNet_stochman_64(in_chan=3, out_chan=1)
     summary(a_based_u_net, (1, 3, 704, 352))
 
     from torchview import draw_graph
