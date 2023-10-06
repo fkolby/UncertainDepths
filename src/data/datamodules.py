@@ -15,8 +15,13 @@ import os
 
 class KITTI_depth_dataset(Dataset):
     def __init__(
-        self, data_dir: str, train_or_test: str = "train", transform=None, target_transform=None,
-        input_height: int = 352, input_width: int = 704,
+        self,
+        data_dir: str,
+        train_or_test: str = "train",
+        transform=None,
+        target_transform=None,
+        input_height: int = 352,
+        input_width: int = 704,
     ) -> None:
         self.data_dir = data_dir
         self.path_to_file = (
@@ -59,7 +64,9 @@ class KITTI_depth_dataset(Dataset):
             input_img = self.transform(input_img).float()
         if self.target_transform:
             label_img = self.target_transform(label_img).float()
-        input_img, label_img = random_crop(img = input_img, depth = label_img, height = self.input_height, width = self.input_width)
+        input_img, label_img = random_crop(
+            img=input_img, depth=label_img, height=self.input_height, width=self.input_width
+        )
         return input_img, label_img
 
     def __len__(self):
@@ -105,8 +112,8 @@ class KITTIDataModule(pl.LightningDataModule):
                 train_or_test="train",
                 transform=self.transform,
                 target_transform=self.target_transform,
-                input_height = self.input_height,
-                input_width = self.input_width,
+                input_height=self.input_height,
+                input_width=self.input_width,
             )
             print("got to evaluating KITTI train val set")
             self.KITTI_train_set = Subset(
@@ -128,16 +135,16 @@ class KITTIDataModule(pl.LightningDataModule):
                 train_or_test="val",
                 transform=self.transform,
                 target_transform=self.target_transform,
-                input_height = self.input_height,
-                input_width = self.input_width,
+                input_height=self.input_height,
+                input_width=self.input_width,
             )
             self.KITTI_predict_set = KITTI_depth_dataset(
                 data_dir=self.data_dir,
                 train_or_test="val",
                 transform=self.transform,
                 target_transform=self.target_transform,
-                input_height = self.input_height,
-                input_width = self.input_width,
+                input_height=self.input_height,
+                input_width=self.input_width,
             )
 
     def train_dataloader(self) -> DataLoader:
@@ -179,8 +186,8 @@ if __name__ == "__main__":
         train_or_test="train",
         transform=transforms.Compose([transforms.PILToTensor()]),
         target_transform=transforms.Compose([transforms.PILToTensor()]),
-        input_height = 352,
-        input_width = 704
+        input_height=352,
+        input_width=704,
     )
     a = iter(dataset)
     images = a.__next__()

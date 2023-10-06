@@ -6,15 +6,38 @@ from nnj import Sequential
 from typing import Optional, Tuple, List, Union
 
 
-class SkipConnection(AbstractJacobian, nn.Module):
+class SkipConnection(AbstractJacobian, nn.Sequential):
     def __init__(self, *args, add_hooks: bool = False):
-        super().__init__()
+        super(SkipConnection,self).__init__(*args)
 
+        self._modules_list = list(self._modules.values())
+        print(self._modules_list)
+        self._n_params = 0
+        # for k in range(len(self._modules)):
+        #    self._n_params += self._modules_list[k]._n_params
+        for layer in self._modules_list:
+            print(layer._n_params)
+
+            self._n_params += layer._n_params
+
+        self.add_hooks = add_hooks
+        if self.add_hooks:
+            self.feature_maps = []
+            self.handles = []
+
+            for k in range(len(self._modules)):
+                self.handles.append(
+                    self._modules_list[k].register_forward_hook(
+                        lambda m, i, o: self.feature_maps.append(o.detach())
+                    )
+                )
+     
         self._F = Sequential(*args, add_hooks=add_hooks)
 
     def forward(self, x):
         return torch.cat([x, self._F(x)], dim=1)
 
+    @torch.no_grad()
     def _jvp(
         self, x: Tensor, val: Union[Tensor, None], vector: Tensor, wrt: str = "input"
     ) -> Tensor:
@@ -26,6 +49,7 @@ class SkipConnection(AbstractJacobian, nn.Module):
         elif wrt == "weight":
             raise NotImplementedError
 
+    @torch.no_grad()
     def _vjp(
         self, x: Tensor, val: Union[Tensor, None], vector: Tensor, wrt: str = "input"
     ) -> Tensor:
@@ -39,6 +63,7 @@ class SkipConnection(AbstractJacobian, nn.Module):
         elif wrt == "weight":
             return vjp
 
+    @torch.no_grad()
     def _jmp(
         self, x: Tensor, val: Union[Tensor, None], matrix: Union[Tensor, None], wrt: str = "input"
     ) -> Tensor:
@@ -51,6 +76,7 @@ class SkipConnection(AbstractJacobian, nn.Module):
         elif wrt == "weight":
             raise NotImplementedError
 
+    @torch.no_grad()
     def _mjp(
         self, x: Tensor, val: Union[Tensor, None], matrix: Union[Tensor, None], wrt: str = "input"
     ) -> Tensor:
@@ -64,6 +90,7 @@ class SkipConnection(AbstractJacobian, nn.Module):
         elif wrt == "weight":
             return mjp
 
+    @torch.no_grad()
     def _jTmjp(
         self,
         x: Tensor,
@@ -99,6 +126,7 @@ class SkipConnection(AbstractJacobian, nn.Module):
         elif wrt == "weight":
             return jTmjp
 
+    @torch.no_grad()
     def _jTmjp_batch2(
         self,
         x1: Tensor,
@@ -146,10 +174,7 @@ class SkipConnection(AbstractJacobian, nn.Module):
             )
             jTmps = tuple(
                 self._F._mjp(
-                    x_i,
-                    None if val_i is None else val_i[:, l:],
-                    m[:, l:, :l].transpose(1, 2),
-                    wrt=wrt,
+                    x_i, None if val_i is None else val_i[:, l:], m[:, l:, :l].transpose(1, 2), wrt=wrt
                 ).transpose(1, 2)
                 for x_i, val_i, m in [(x1, val1, m11), (x1, val1, m12), (x2, val2, m22)]
             )

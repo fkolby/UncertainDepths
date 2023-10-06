@@ -44,11 +44,10 @@ class KITTI_depth_lightning_module(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y = batch
         try:
-             assert (
-            (x[:, 0, :, :].shape
-             == y[:, 0, :, :].shape) & (x[0,0,:,:].shape ==
-            torch.Size((self.input_height, self.input_width))))
-        
+            assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
+                x[0, 0, :, :].shape == torch.Size((self.input_height, self.input_width))
+            )
+
         except:
             pdb.set_trace()
         preds = self.model(x)
@@ -75,10 +74,8 @@ class KITTI_depth_lightning_module(pl.LightningModule):
     def validation_step(self, batch, batch_idx):
         x, y = batch
 
-        assert (
-            (x[:, 0, :, :].shape
-             == y[:, 0, :, :].shape) & (x[0,0,:,:].shape ==
-            torch.Size((self.input_height, self.input_width)))
+        assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
+            x[0, 0, :, :].shape == torch.Size((self.input_height, self.input_width))
         )
         preds = self.model(x)
         print(f"VALIDATION: x: {x.shape} y: {y.shape}, pred: {preds.shape}")

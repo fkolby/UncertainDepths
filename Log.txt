@@ -1,0 +1,11 @@
+
+5 October:
+-Ran experiment on Cluster, running for 80 epochs giving at least qualitatively adequate results.
+- Started nnj migration.
+
+6. October:
+- Should forward be seperately implemented?
+- Can the modules get the respective methods, in new nomenclature - what about when propagating?
+- Inconsistencies for val == none in nnj?
+- Am I evaluating correctly; when i only give loss on cropped (352x704) images? Final eval is of course on 352x704
+Goal for today: "copy paste in nnj and try to run laplace with it."
