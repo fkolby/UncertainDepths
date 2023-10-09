@@ -60,6 +60,11 @@ class KITTI_depth_dataset(Dataset):
 
         input_img = Image.open(input_path)
         label_img = Image.open(label_path)
+        label_untransformed = transforms.CenterCrop((352, 1216))(
+            transforms.PILToTensor()(label_img.copy())
+        ).detach()
+        # Kitti benchmark crop.
+
         if self.transform:
             input_img = self.transform(input_img).float()
         if self.target_transform:
@@ -67,7 +72,7 @@ class KITTI_depth_dataset(Dataset):
         input_img, label_img = random_crop(
             img=input_img, depth=label_img, height=self.input_height, width=self.input_width
         )
-        return input_img, label_img
+        return input_img, label_img, label_untransformed
 
     def __len__(self):
         return len(self.filenames)
@@ -82,8 +87,8 @@ class KITTIDataModule(pl.LightningDataModule):
         transform=transforms.Compose([transforms.PILToTensor()]),
         target_transform=transforms.Compose([transforms.PILToTensor()]),
         num_workers: int = 8,
-        input_height: int = 704,
-        input_width: int = 352,
+        input_height: int = 352,
+        input_width: int = 704,
     ) -> None:
         super().__init__()
         self.data_dir = data_dir

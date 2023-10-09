@@ -74,3 +74,40 @@ def log_images(img, depth, pred, vmin, vmax, step):
         },
         step=step,
     )
+
+
+def log_loss_metrics(preds, targets, tstep=0, loss_prefix="train"):
+    preds = preds.cpu()
+    targets = targets.cpu()
+    thresh = torch.maximum((targets / preds), (preds / targets))
+    delta1 = (thresh < 1.25).mean(dtype=float)
+    delta2 = (thresh < 1.25**2).mean(dtype=float)
+    delta3 = (thresh < 1.25**3).mean(dtype=float)
+
+    abs_rel = (torch.abs(targets - preds) / targets).mean()
+    sq_rel = (((targets - preds) ** 2) / targets).mean()
+
+    rmse = (targets - preds) ** 2
+    rmse = np.sqrt(rmse.mean())
+
+    rmse_log = (torch.log(targets) - torch.log(preds)) ** 2
+    rmse_log = np.sqrt(rmse_log.mean())
+
+    err = torch.log(preds) - torch.log(targets)
+    silog = np.sqrt(((err**2).mean()) - err.mean() ** 2) * 100
+
+    log_10 = (torch.abs(torch.log10(targets) - torch.log10(preds))).mean()
+    return wandb.log(
+        {
+            loss_prefix + "_delta1": delta1,
+            loss_prefix + "_delta2": delta2,
+            loss_prefix + "_delta3": delta3,
+            loss_prefix + "_abs_rel": abs_rel,
+            loss_prefix + "_rmse": rmse,
+            loss_prefix + "_log_10": log_10,
+            loss_prefix + "_rmse_log": rmse_log,
+            loss_prefix + "_silog": silog,
+            loss_prefix + "_sq_rel": sq_rel,
+        },
+        step=tstep,
+    )

@@ -14,7 +14,7 @@ import pytorch_lightning as pl
 from torch import optim, nn
 from pytorch_lightning import callbacks
 import pdb
-from src.utility.viz_utils import log_images
+from src.utility.viz_utils import log_images, log_loss_metrics
 import os
 
 
@@ -42,7 +42,7 @@ class KITTI_depth_lightning_module(pl.LightningModule):
         self.batch_size = batch_size
 
     def training_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, fullsize_targets = batch
         try:
             assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
                 x[0, 0, :, :].shape == torch.Size((self.input_height, self.input_width))
@@ -68,11 +68,29 @@ class KITTI_depth_lightning_module(pl.LightningModule):
 
         self.log("train_loss", loss)
         wandb.log({"train_loss": loss}, step=self.tstep)
+
+        fullsize_mask = torch.logical_and(
+            fullsize_targets > self.min_depth, fullsize_targets < self.max_depth
+        )
+
+        masked_full_size_targets = fullsize_targets * fullsize_mask
+
+        resized_preds = nn.functional.interpolate(
+            preds, fullsize_targets.shape[-2:], mode="bilinear", align_corners=True
+        )
+
+        masked_resized_preds = resized_preds * fullsize_mask
+        log_loss_metrics(
+            preds=masked_resized_preds.detach(),
+            targets=masked_full_size_targets.detach(),
+            tstep=self.tstep,
+            loss_prefix="train",
+        )
         self.tstep += 1
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, fullsize_targets = batch
 
         assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
             x[0, 0, :, :].shape == torch.Size((self.input_height, self.input_width))
@@ -84,6 +102,24 @@ class KITTI_depth_lightning_module(pl.LightningModule):
 
         wandb.log({"val_loss": loss}, step=self.tstep)
         self.log("validation_loss", loss)
+
+        fullsize_mask = torch.logical_and(
+            fullsize_targets > self.min_depth, fullsize_targets < self.max_depth
+        )
+
+        masked_full_size_targets = fullsize_targets * fullsize_mask
+
+        resized_preds = nn.functional.interpolate(
+            preds, fullsize_targets.shape[-2:], mode="bilinear", align_corners=True
+        )
+
+        masked_resized_preds = resized_preds * fullsize_mask
+        log_loss_metrics(
+            preds=masked_resized_preds.detach(),
+            targets=masked_full_size_targets.detach(),
+            tstep=self.tstep,
+            loss_prefix="val",
+        )
         return loss
 
     def test_step(self, batch, batch_idx):
@@ -132,6 +168,7 @@ def main(cfg: DictConfig):
     transform = transforms.Compose(
         [
             transforms.PILToTensor(),
+            transforms.CenterCrop((352, 1216)),
             transforms.Lambda(lambda x: x / 255),
             transforms.Normalize(
                 mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
@@ -141,6 +178,7 @@ def main(cfg: DictConfig):
     target_transform = transforms.Compose(
         [
             transforms.PILToTensor(),
+            transforms.CenterCrop((352, 1216)),
             transforms.Lambda(lambda x: x / 256),  # 256 as per devkit
         ]
     )
