@@ -9,3 +9,10 @@
 - Inconsistencies for val == none in nnj?
 - Am I evaluating correctly; when i only give loss on cropped (352x704) images? Final eval is of course on 352x704
 Goal for today: "copy paste in nnj and try to run laplace with it." GOAL NOT COMPLETED: RAN INTO ISSUES WITH TEST; REQUIRES ME TO UNDERSTAND THE DIMENSIONALITY OF THE TEST.
+
+
+9 October:
+- Copied in script from adabins about logging metrics
+- Goal for today: get logging for all relevant metrics setup, and read papers. Goal met. more papers to read.
+
+Job for next day: implement loss func silogloss, and work hard on library.
