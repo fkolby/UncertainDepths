@@ -60,10 +60,15 @@ class KITTI_depth_dataset(Dataset):
 
         input_img = Image.open(input_path)
         label_img = Image.open(label_path)
-        label_untransformed = transforms.CenterCrop((352, 1216))(
-            transforms.PILToTensor()(label_img.copy())
-        ).detach()
-        # Kitti benchmark crop.
+        no_transforms = transforms.Compose(
+            [
+                transforms.PILToTensor(),
+                transforms.CenterCrop((352, 1216)),
+                transforms.Lambda(lambda x: x / 256),  # 256 as per devkit
+            ]
+        )
+
+        label_untransformed = no_transforms(label_img.copy()).detach()  # Kitti benchmark crop.
 
         if self.transform:
             input_img = self.transform(input_img).float()

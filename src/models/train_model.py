@@ -73,13 +73,12 @@ class KITTI_depth_lightning_module(pl.LightningModule):
             fullsize_targets > self.min_depth, fullsize_targets < self.max_depth
         )
 
-        masked_full_size_targets = fullsize_targets * fullsize_mask
+        masked_full_size_targets = fullsize_targets[fullsize_mask]
 
         resized_preds = nn.functional.interpolate(
             preds, fullsize_targets.shape[-2:], mode="bilinear", align_corners=True
         )
-
-        masked_resized_preds = resized_preds * fullsize_mask
+        masked_resized_preds = resized_preds[fullsize_mask]
         log_loss_metrics(
             preds=masked_resized_preds.detach(),
             targets=masked_full_size_targets.detach(),
@@ -107,13 +106,13 @@ class KITTI_depth_lightning_module(pl.LightningModule):
             fullsize_targets > self.min_depth, fullsize_targets < self.max_depth
         )
 
-        masked_full_size_targets = fullsize_targets * fullsize_mask
+        masked_full_size_targets = fullsize_targets[fullsize_mask]
 
         resized_preds = nn.functional.interpolate(
             preds, fullsize_targets.shape[-2:], mode="bilinear", align_corners=True
         )
 
-        masked_resized_preds = resized_preds * fullsize_mask
+        masked_resized_preds = resized_preds[fullsize_mask]
         log_loss_metrics(
             preds=masked_resized_preds.detach(),
             targets=masked_full_size_targets.detach(),
