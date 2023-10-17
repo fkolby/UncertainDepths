@@ -8,24 +8,25 @@ from typing import Optional, Tuple, List, Union, Literal
 class Flatten(AbstractJacobian, nn.Module):
     def __init__(self):
         print("flutten")
-        super(Flatten,self).__init__()
+        super(Flatten, self).__init__()
         self._n_params = 0
 
     def forward(self, x: Tensor) -> Tensor:
         val = x.reshape(x.shape[0], -1)
         return val
-    
+
     @torch.no_grad()
-    def jacobian(self, x: Tensor, val: Union[None, Tensor], wrt: Literal["weight", "input"] = "input"):
+    def jacobian(
+        self, x: Tensor, val: Union[None, Tensor], wrt: Literal["weight", "input"] = "input"
+    ):
         if wrt == "input":
             if val is None:
                 return self.forward(x)
             else:
                 raise NotImplementedError
         elif wrt == "weight":
-            #non parametric
+            # non parametric
             return None
-
 
     @torch.no_grad()
     def _jvp(

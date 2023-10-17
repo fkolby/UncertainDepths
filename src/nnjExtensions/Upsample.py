@@ -1,27 +1,29 @@
-
 import torch
 import torch.nn.functional as F
 from torch import nn, Tensor
 from nnj import AbstractJacobian
 
-from typing import Optional, Tuple, List, Union,Literal
+from typing import Optional, Tuple, List, Union, Literal
+
 
 class Upsample(AbstractJacobian, nn.Upsample):
-
-    def __init__(self,*args,**kwargs):
-        super(Upsample,self).__init__(*args,**kwargs)
+    def __init__(self, *args, **kwargs):
+        super(Upsample, self).__init__(*args, **kwargs)
         self._n_params = 0
+
     @torch.no_grad()
-    def jacobian(self, x: Tensor, val: Union[None, Tensor], wrt: Literal["weight", "input"] = "input"):
-        if wrt=="input":
+    def jacobian(
+        self, x: Tensor, val: Union[None, Tensor], wrt: Literal["weight", "input"] = "input"
+    ):
+        if wrt == "input":
             if val is None:
                 return self.forward(x)
             else:
                 raise NotImplementedError
-        if wrt=="weight":
-            #Non parametric
+        if wrt == "weight":
+            # Non parametric
             return None
-        
+
     @torch.no_grad()
     def _jacobian_wrt_input_mult_left_vec(self, x: Tensor, val: Tensor, jac_in: Tensor) -> Tensor:
         xs = x.shape
@@ -43,7 +45,9 @@ class Upsample(AbstractJacobian, nn.Upsample):
         )
 
     @torch.no_grad()
-    def _jvp(self, x: Tensor, val: Union[Tensor, None], vector: Tensor, wrt: str = "input") -> Tensor:
+    def _jvp(
+        self, x: Tensor, val: Union[Tensor, None], vector: Tensor, wrt: str = "input"
+    ) -> Tensor:
         """
         jacobian vector product
         """
@@ -53,7 +57,9 @@ class Upsample(AbstractJacobian, nn.Upsample):
             raise NotImplementedError
 
     @torch.no_grad()
-    def _vjp(self, x: Tensor, val: Union[Tensor, None], vector: Tensor, wrt: str = "input") -> Tensor:
+    def _vjp(
+        self, x: Tensor, val: Union[Tensor, None], vector: Tensor, wrt: str = "input"
+    ) -> Tensor:
         """
         vector jacobian product
         """
@@ -87,7 +93,9 @@ class Upsample(AbstractJacobian, nn.Upsample):
             assert c1 == c2
             assert matrix.shape == (b, c2 * h2 * w2, c2 * h2 * w2)
 
-            weight = torch.ones(1, 1, int(self.scale_factor), int(self.scale_factor), device=x.device)
+            weight = torch.ones(
+                1, 1, int(self.scale_factor), int(self.scale_factor), device=x.device
+            )
 
             matrix = matrix.reshape(b, c2, h2 * w2, c2, h2 * w2)
             matrix = matrix.movedim(2, 3)
@@ -164,7 +172,9 @@ class Upsample(AbstractJacobian, nn.Upsample):
         if wrt == "input":
             if not from_diag and not to_diag:
                 # full -> full
-                return tuple(self._jacobian_wrt_input_sandwich_full_to_full(x1, val1, m) for m in matrixes)
+                return tuple(
+                    self._jacobian_wrt_input_sandwich_full_to_full(x1, val1, m) for m in matrixes
+                )
             elif from_diag and not to_diag:
                 # diag -> full
                 raise NotImplementedError
@@ -179,7 +189,9 @@ class Upsample(AbstractJacobian, nn.Upsample):
             return None
 
     @torch.no_grad()
-    def _jacobian_wrt_input_sandwich_full_to_full(self, x: Tensor, val: Tensor, tmp: Tensor) -> Tensor:
+    def _jacobian_wrt_input_sandwich_full_to_full(
+        self, x: Tensor, val: Tensor, tmp: Tensor
+    ) -> Tensor:
         b, c1, h1, w1 = x.shape
         c2, h2, w2 = val.shape[1:]
 
@@ -220,7 +232,9 @@ class Upsample(AbstractJacobian, nn.Upsample):
         return Jt_tmp_J
 
     @torch.no_grad()
-    def _jacobian_wrt_input_sandwich_diag_to_diag(self, x: Tensor, val: Tensor, tmp_diag: Tensor) -> Tensor:
+    def _jacobian_wrt_input_sandwich_diag_to_diag(
+        self, x: Tensor, val: Tensor, tmp_diag: Tensor
+    ) -> Tensor:
         b, c1, h1, w1 = x.shape
         c2, h2, w2 = val.shape[1:]
 

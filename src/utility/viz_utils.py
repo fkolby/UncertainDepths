@@ -4,7 +4,9 @@ import wandb
 import numpy as np
 import torch
 from torchvision import transforms
+from src.models.loss import SILogLoss
 
+from torch.nn import MSELoss
 
 ## function found from ADABINS (https://github.com/shariqfarooq123/AdaBins/blob/main/utils.pdepth)
 def colorize(value, vmin=10, vmax=1000, cmap="plasma"):
@@ -75,8 +77,8 @@ def log_images(img, depth, pred, vmin, vmax, step):
         step=step,
     )
 
+def calc_loss_metrics(preds, targets):
 
-def log_loss_metrics(preds, targets, tstep=0, loss_prefix="train"):
     preds = preds.cpu()
     targets = targets.cpu()
     thresh = torch.maximum((targets / preds), (preds / targets))
@@ -97,17 +99,28 @@ def log_loss_metrics(preds, targets, tstep=0, loss_prefix="train"):
     silog = np.sqrt(((err**2).mean()) - err.mean() ** 2) * 100
 
     log_10 = (torch.abs(torch.log10(targets) - torch.log10(preds))).mean()
+
+    silogloss_loss_func = SILogLoss()(preds,targets)
+    mse_loss_func= MSELoss()(preds,targets)
+    return ({"delta1":delta1,"delta2":delta2,"delta3":delta3,"abs_rel":abs_rel,"rmse":rmse,"log_10":log_10,"rmse_log":rmse_log,"silog":silog,"sq_rel":sq_rel, "silogloss_loss_func":silogloss_loss_func, "mse_loss_func":mse_loss_func})
+
+def log_loss_metrics(preds, targets, tstep=0, loss_prefix="train"):
+    metrics = calc_loss_metrics(preds,targets)
+
     return wandb.log(
         {
-            loss_prefix + "_delta1": delta1,
-            loss_prefix + "_delta2": delta2,
-            loss_prefix + "_delta3": delta3,
-            loss_prefix + "_abs_rel": abs_rel,
-            loss_prefix + "_rmse": rmse,
-            loss_prefix + "_log_10": log_10,
-            loss_prefix + "_rmse_log": rmse_log,
-            loss_prefix + "_silog": silog,
-            loss_prefix + "_sq_rel": sq_rel,
+            loss_prefix + "_delta1": metrics["delta1"],
+            loss_prefix + "_delta2": metrics["delta2"],
+            loss_prefix + "_delta3": metrics["delta3"],
+            loss_prefix + "_abs_rel": metrics["abs_rel"],
+            loss_prefix + "_rmse": metrics["rmse"],
+            loss_prefix + "_log_10": metrics["log_10"],
+            loss_prefix + "_rmse_log": metrics["rmse_log"],
+            loss_prefix + "_silog": metrics["silog"],
+            loss_prefix + "_sq_rel": metrics["sq_rel"],
+            loss_prefix + "_SIlog_loss_func": metrics["silogloss_loss_func"],
+            loss_prefix + "_MSE_loss_func": metrics["mse_loss_func"],
         },
         step=tstep,
     )
+

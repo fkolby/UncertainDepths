@@ -16,6 +16,10 @@ from pytorch_lightning import callbacks
 import pdb
 from src.utility.viz_utils import log_images, log_loss_metrics
 import os
+from src.models.loss import SILogLoss
+from src.models.evaluate_models import eval_model
+from pprint import pprint
+from lightning.pytorch import callbacks
 
 
 class KITTI_depth_lightning_module(pl.LightningModule):
@@ -40,6 +44,9 @@ class KITTI_depth_lightning_module(pl.LightningModule):
         self.input_height = input_height
         self.input_width = input_width
         self.batch_size = batch_size
+        
+    def forward(self, inputs):
+        return self.model(inputs)
 
     def training_step(self, batch, batch_idx):
         x, y, fullsize_targets = batch
@@ -50,7 +57,7 @@ class KITTI_depth_lightning_module(pl.LightningModule):
 
         except:
             pdb.set_trace()
-        preds = self.model(x)
+        preds = self(x)
         print(f"TRAIN:  x: {x.shape} y: {y.shape}, pred: {preds.shape}, tstep: {self.tstep}")
         if self.tstep % 10 == 0:
             log_images(
@@ -94,7 +101,7 @@ class KITTI_depth_lightning_module(pl.LightningModule):
         assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
             x[0, 0, :, :].shape == torch.Size((self.input_height, self.input_width))
         )
-        preds = self.model(x)
+        preds = self(x)
         print(f"VALIDATION: x: {x.shape} y: {y.shape}, pred: {preds.shape}")
         mask = torch.logical_and(y > self.min_depth, y < self.max_depth)
         loss = self.loss_function(preds * mask, y * mask)
@@ -123,7 +130,7 @@ class KITTI_depth_lightning_module(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         x, y = batch
-        preds = self.model(x)
+        preds = self(x)
         mask = torch.logical_and(y > self.min_depth, y < self.max_depth)
         loss = self.loss_function(preds * mask, y * mask)
         self.log("TEST loss", loss)
@@ -155,7 +162,7 @@ def main(cfg: DictConfig):
     log.info(OmegaConf.to_yaml(cfg))
     model = KITTI_depth_lightning_module(
         model=BaseUNet(in_channels=3, out_channels=1),
-        loss_function=nn.functional.mse_loss,
+        loss_function=SILogLoss(),
         learning_rate=cfg.hyperparameters.learning_rate,
         min_depth=cfg.dataset_params.min_depth,
         max_depth=cfg.dataset_params.max_depth,
@@ -190,13 +197,30 @@ def main(cfg: DictConfig):
         input_height=cfg.dataset_params.input_height,
         input_width=cfg.dataset_params.input_width,
     )
-
     datamodule.setup(stage="fit")
     trainer.fit(
         model=model,
         train_dataloaders=datamodule.train_dataloader(),
         val_dataloaders=datamodule.val_dataloader(),
     )
+    trainer.save_checkpoint("example.ckpt")
+    model = KITTI_depth_lightning_module.load_from_checkpoint("example.ckpt",model=BaseUNet(in_channels=3, out_channels=1),
+        loss_function=SILogLoss(),
+        learning_rate=cfg.hyperparameters.learning_rate,
+        min_depth=cfg.dataset_params.min_depth,
+        max_depth=cfg.dataset_params.max_depth,
+        input_height=cfg.dataset_params.input_height,
+        input_width=cfg.dataset_params.input_width,
+        batch_size=cfg.hyperparameters.batch_size, )
+        
+    pprint(eval_model(model=model, test_loader = datamodule.val_dataloader(), config=cfg))
+    repo = "isl-org/ZoeDepth"
+    ZoeNK = model_zoe_nk = torch.hub.load(repo, "ZoeD_NK", pretrained=True)
+    print("now it errors")
+    pprint(eval_model(model=ZoeNK, test_loader = datamodule.val_dataloader(), config=cfg))
+
+
+
 
 
 if __name__ == "__main__":

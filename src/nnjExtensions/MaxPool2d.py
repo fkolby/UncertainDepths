@@ -7,12 +7,9 @@ from typing import Optional, Tuple, List, Union, Literal
 
 
 class MaxPool2d(AbstractJacobian, nn.MaxPool2d):
-
-
-    def __init__(self, *args,**kwargs):
-        super(MaxPool2d,self).__init__(*args, **kwargs)
-        self._n_params=0
-        
+    def __init__(self, *args, **kwargs):
+        super(MaxPool2d, self).__init__(*args, **kwargs)
+        self._n_params = 0
 
     def forward(self, input: Tensor):
         val, idx = F.max_pool2d(
@@ -26,16 +23,18 @@ class MaxPool2d(AbstractJacobian, nn.MaxPool2d):
         )
         self.idx = idx
         return val
-    
+
     @torch.no_grad()
-    def jacobian(self, x: Tensor, val: Union[None, Tensor], wrt: Literal["weight", "input"] = "input"):
+    def jacobian(
+        self, x: Tensor, val: Union[None, Tensor], wrt: Literal["weight", "input"] = "input"
+    ):
         if wrt == "input":
             if val is None:
                 return self.forward(x)
             else:
                 raise NotImplementedError
         elif wrt == "weight":
-            #non parametric
+            # non parametric
             return None
 
     @torch.no_grad()

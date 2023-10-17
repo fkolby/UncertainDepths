@@ -13,7 +13,7 @@ x = torch.rand((2, 3, 4, 5))
 conv = Conv2d.Conv2d(3, 2, 1)
 skp = SkipConnection.SkipConnection(conv)
 flt = Flatten.Flatten()
-mx2 = MaxPool2d.MaxPool2d(kernel_size =2)
+mx2 = MaxPool2d.MaxPool2d(kernel_size=2)
 Upsample = Upsample.Upsample(scale_factor=2)
 
 conv(x)

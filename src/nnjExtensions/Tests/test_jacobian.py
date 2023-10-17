@@ -10,15 +10,15 @@ Test that the method .jacobian() returns the correct matrix
 import torch
 
 import nnj
-from src.nnjExtensions import Flatten, Conv2d, Upsample,SkipConnection,MaxPool2d
+from src.nnjExtensions import Flatten, Conv2d, Upsample, SkipConnection, MaxPool2d
 
 
 # define some input data
 xs = [
-    torch.randn(3,7, 3),
-    torch.ones(3,7, 3),
-    torch.randn(3,7, 3) + torch.ones(3,7, 3),
-    10 * torch.rand(3,7, 3),
+    torch.randn(7, 3),
+    torch.ones(7, 3),
+    torch.randn(7, 3) + torch.ones(7, 3),
+    10 * torch.rand(7, 3),
 ]
 
 # get all the layers
@@ -32,12 +32,11 @@ to_test_easy = [
     nnj.TruncExp(),
     nnj.Softplus(),
     Flatten.Flatten(),
-    Conv2d.Conv2d(3,5,1,stride=2, padding=1),
-    Conv2d.Conv2d(3,5,1),
+    Conv2d.Conv2d(3, 5, 1, stride=2, padding=1),
+    Conv2d.Conv2d(3, 5, 1),
     Upsample.Upsample(scale_factor=2),
-    SkipConnection.SkipConnection(Conv2d.Conv2d(3,5,1)),
-    MaxPool2d.MaxPool2d(kernel_size =2 ),
-    
+    SkipConnection.SkipConnection(Conv2d.Conv2d(3, 5, 1)),
+    MaxPool2d.MaxPool2d(kernel_size=2),
 ]
 
 to_test_advanced = [
@@ -59,15 +58,16 @@ to_test_advanced = [
     ),
     nnj.Sequential(
         SkipConnection.SkipConnection(
-            nnj.Linear(3,10),
-            Conv2d.Conv2d(10,4,1),
+            nnj.Linear(3, 10),
+            Conv2d.Conv2d(10, 4, 1),
             Upsample.Upsample(scale_factor=3),
             MaxPool2d.MaxPool2d(kernel_size=3),
-            Conv2d.Conv2d(10,4,1,stride=2,padding=1),
-            add_hooks=True),
+            Conv2d.Conv2d(10, 4, 1, stride=2, padding=1),
+            add_hooks=True,
+        ),
         Flatten.Flatten(),
-        add_hooks=True),
-
+        add_hooks=True,
+    ),
     nnj.Sequential(
         nnj.Linear(3, 5),
         nnj.Tanh(),
@@ -139,5 +139,6 @@ def test_jacobian_wrt_weight():
 
             assert jacobian_nnj.shape == jacobian_nn.shape
             assert torch.isclose(jacobian_nnj, jacobian_nn, atol=1e-4).all()
+
 
 test_jacobian_wrt_weight()
