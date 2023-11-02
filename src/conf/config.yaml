@@ -1,7 +1,8 @@
 in_debug : True
+pdb_disabled: False
 save_images: False
 eval_eigen_crop: True
-save_image_path: "/home/jbv415/UncertainDepths/src/models/outputs/"
+save_images_path: "/home/jbv415/UncertainDepths/src/models/outputs/"
 hyperparameters:
  learning_rate : 3e-4
  batch_size : 8 
@@ -13,5 +14,5 @@ dataset_params:
   input_height: 352
   input_width: 704
 trainer_args:
-  max_epochs: 50 
+  max_epochs: 1 
 

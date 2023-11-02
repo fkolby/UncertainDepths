@@ -144,7 +144,8 @@ class KITTI_depth_lightning_module(pl.LightningModule):
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
 def main(cfg: DictConfig):
     if cfg.in_debug:
-        pdb.set_trace()
+        if not cfg.pdb_disabled:
+            pdb.set_trace()
         os.environ["WANDB_MODE"] = "disabled"
         trainer_args = {
             "max_epochs": 1,

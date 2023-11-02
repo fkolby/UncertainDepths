@@ -94,7 +94,18 @@ target/
 *.ckpt
 
 
+#no slurm output
+/src/slurm*
+
+#dont include viser or zoedepth
+ZoeDepth/
+src/nnj/
+/src/viser/
 
 #dont include the output from WANDB
-/src/wandb/run-202*
+wandb/
+/src/wandb/
 /src/outputs/
+/src/models/outputs/
+
+

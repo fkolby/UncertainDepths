@@ -16,3 +16,13 @@ Goal for today: "copy paste in nnj and try to run laplace with it." GOAL NOT COM
 - Goal for today: get logging for all relevant metrics setup, and read papers. Goal met. more papers to read.
 
 Job for next day: implement loss func silogloss, and work hard on library.
+
+
+23 october ToDo.
+- Integrate viser
+- Integrate nyudv depth.
+
+Questions for 25 oct:
+- dropout by uncertainty estimation?
+- zoedepth upgrade using Masked image modelling
+

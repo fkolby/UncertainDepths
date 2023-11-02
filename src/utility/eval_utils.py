@@ -2,10 +2,15 @@ import numpy as np
 import torch
 from  src.utility.viz_utils import calc_loss_metrics
 from torch import nn
+import timeit
+import time
+from src.utility.debug_utils import time_since_previous_log
+
 #shamelessly stolen from zoedepth repo.
 def compute_metrics(gt, pred, interpolate=True, garg_crop=False, eigen_crop=True, dataset='kitti', min_depth_eval=1e-3, max_depth_eval=80, **kwargs):
     """Compute metrics of predicted depth maps. Applies cropping and masking as necessary or specified via arguments. Refer to compute_errors for more details on metrics.
     """
+    time_prev = time.time()
     if 'config' in kwargs:
         config = kwargs['config']
         eigen_crop = config.eval_eigen_crop
@@ -45,4 +50,5 @@ def compute_metrics(gt, pred, interpolate=True, garg_crop=False, eigen_crop=True
         else:
             eval_mask = np.ones(valid_mask.shape)
     valid_mask = np.logical_and(valid_mask, eval_mask)
-    return calc_loss_metrics(gt_depth[valid_mask], pred[valid_mask])
+    out = calc_loss_metrics(gt_depth[valid_mask], pred[valid_mask])
+    return  out

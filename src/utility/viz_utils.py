@@ -5,9 +5,9 @@ import numpy as np
 import torch
 from torchvision import transforms
 from src.models.loss import SILogLoss
-
+from src.utility.debug_utils import time_since_previous_log
 from torch.nn import MSELoss
-
+import time
 ## function found from ADABINS (https://github.com/shariqfarooq123/AdaBins/blob/main/utils.pdepth)
 def colorize(value, vmin=10, vmax=1000, cmap="plasma"):
     # normalize
@@ -78,7 +78,6 @@ def log_images(img, depth, pred, vmin, vmax, step):
     )
 
 def calc_loss_metrics(preds, targets):
-
     preds = preds.cpu()
     targets = targets.cpu()
     thresh = torch.maximum((targets / preds), (preds / targets))
