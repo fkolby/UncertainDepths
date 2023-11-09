@@ -1,4 +1,3 @@
-
 class RunningAverage:
     def __init__(self):
         self.avg = 0
@@ -11,8 +10,10 @@ class RunningAverage:
     def get_value(self):
         return self.avg
 
+
 class RunningAverageDict:
     """A dictionary of running averages."""
+
     def __init__(self):
         self._dict = None
 

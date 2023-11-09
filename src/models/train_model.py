@@ -24,6 +24,7 @@ from pprint import pprint
 from lightning.pytorch import callbacks
 from src.utility.train_utils import seed_everything
 
+
 class KITTI_depth_lightning_module(pl.LightningModule):
     def __init__(
         self,
@@ -46,7 +47,7 @@ class KITTI_depth_lightning_module(pl.LightningModule):
         self.input_height = input_height
         self.input_width = input_width
         self.batch_size = batch_size
-        
+
     def forward(self, inputs):
         return self.model(inputs)
 
@@ -145,7 +146,6 @@ class KITTI_depth_lightning_module(pl.LightningModule):
 
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
 def main(cfg: DictConfig):
-
     if cfg.in_debug:
         if not cfg.pdb_disabled:
             pdb.set_trace()
@@ -165,17 +165,19 @@ def main(cfg: DictConfig):
     log = logging.getLogger(__name__)
     log.info(OmegaConf.to_yaml(cfg))
     seed_everything(cfg.seed)
-    models_to_test = {"Unet":model = KITTI_depth_lightning_module(
-        model=BaseUNet(in_channels=3, out_channels=1),
-        loss_function=SILogLoss(),
-        learning_rate=cfg.hyperparameters.learning_rate,
-        min_depth=cfg.dataset_params.min_depth,
-        max_depth=cfg.dataset_params.max_depth,
-        input_height=cfg.dataset_params.input_height,
-        input_width=cfg.dataset_params.input_width,
-        batch_size=cfg.hyperparameters.batch_size,
-    )}
-    
+    models_to_test = {
+        "Unet": KITTI_depth_lightning_module(
+            model=BaseUNet(in_channels=3, out_channels=1),
+            loss_function=SILogLoss(),
+            learning_rate=cfg.hyperparameters.learning_rate,
+            min_depth=cfg.dataset_params.min_depth,
+            max_depth=cfg.dataset_params.max_depth,
+            input_height=cfg.dataset_params.input_height,
+            input_width=cfg.dataset_params.input_width,
+            batch_size=cfg.hyperparameters.batch_size,
+        )
+    }
+
     trainer = pl.Trainer(logger=logger, **trainer_args)
     transform = transforms.Compose(
         [
@@ -210,15 +212,18 @@ def main(cfg: DictConfig):
         val_dataloaders=datamodule.val_dataloader(),
     )
     trainer.save_checkpoint("example.ckpt")
-    model = KITTI_depth_lightning_module.load_from_checkpoint("example.ckpt",model=BaseUNet(in_channels=3, out_channels=1).to("cuda"),
+    model = KITTI_depth_lightning_module.load_from_checkpoint(
+        "example.ckpt",
+        model=BaseUNet(in_channels=3, out_channels=1).to("cuda"),
         loss_function=MSELoss(),
         learning_rate=cfg.hyperparameters.learning_rate,
         min_depth=cfg.dataset_params.min_depth,
         max_depth=cfg.dataset_params.max_depth,
         input_height=cfg.dataset_params.input_height,
         input_width=cfg.dataset_params.input_width,
-        batch_size=cfg.hyperparameters.batch_size, )
-    
+        batch_size=cfg.hyperparameters.batch_size,
+    )
+
     datamoduleEval = KITTIDataModule(
         data_dir=cfg.dataset_params.data_dir,
         batch_size=cfg.hyperparameters.batch_size,
@@ -227,18 +232,23 @@ def main(cfg: DictConfig):
         num_workers=cfg.dataset_params.num_workers,
         input_height=cfg.dataset_params.input_height,
         input_width=cfg.dataset_params.input_width,
-        pytorch_lightning_in_use = False, #KEY ARGUMENT HERE FOR SPEED.
+        pytorch_lightning_in_use=False,  # KEY ARGUMENT HERE FOR SPEED.
     )
 
     datamoduleEval.setup(stage="fit")
-    pprint(eval_model(model=model,model_name="Unet", test_loader = datamoduleEval.val_dataloader(), config=cfg))
+    pprint(
+        eval_model(
+            model=model, model_name="Unet", test_loader=datamoduleEval.val_dataloader(), config=cfg
+        )
+    )
     repo = "isl-org/ZoeDepth"
     ZoeNK = torch.hub.load(repo, "ZoeD_NK", pretrained=True)
     print("now it errors")
-    pprint(eval_model(model=ZoeNK, model_name = "ZoeNK",test_loader = datamoduleEval.val_dataloader(), config=cfg))
-
-
-
+    pprint(
+        eval_model(
+            model=ZoeNK, model_name="ZoeNK", test_loader=datamoduleEval.val_dataloader(), config=cfg
+        )
+    )
 
 
 if __name__ == "__main__":

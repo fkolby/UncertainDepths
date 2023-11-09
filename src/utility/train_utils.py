@@ -25,8 +25,9 @@ def retry(how_many_tries=2):
 
     return wrapper
 
+
 def seed_everything(seed: int):
-    #taken directly from zoedepth
+    # taken directly from zoedepth
     import random
 
     import numpy

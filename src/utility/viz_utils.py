@@ -8,6 +8,8 @@ from src.models.loss import SILogLoss
 from src.utility.debug_utils import time_since_previous_log
 from torch.nn import MSELoss
 import time
+
+
 ## function found from ADABINS (https://github.com/shariqfarooq123/AdaBins/blob/main/utils.pdepth)
 def colorize(value, vmin=10, vmax=1000, cmap="plasma"):
     # normalize
@@ -77,6 +79,7 @@ def log_images(img, depth, pred, vmin, vmax, step):
         step=step,
     )
 
+
 def calc_loss_metrics(preds, targets):
     preds = preds.cpu()
     targets = targets.cpu()
@@ -99,12 +102,25 @@ def calc_loss_metrics(preds, targets):
 
     log_10 = (torch.abs(torch.log10(targets) - torch.log10(preds))).mean()
 
-    silogloss_loss_func = SILogLoss()(preds,targets)
-    mse_loss_func= MSELoss()(preds,targets)
-    return ({"delta1":delta1,"delta2":delta2,"delta3":delta3,"abs_rel":abs_rel,"rmse":rmse,"log_10":log_10,"rmse_log":rmse_log,"silog":silog,"sq_rel":sq_rel, "silogloss_loss_func":silogloss_loss_func, "mse_loss_func":mse_loss_func})
+    silogloss_loss_func = SILogLoss()(preds, targets)
+    mse_loss_func = MSELoss()(preds, targets)
+    return {
+        "delta1": delta1,
+        "delta2": delta2,
+        "delta3": delta3,
+        "abs_rel": abs_rel,
+        "rmse": rmse,
+        "log_10": log_10,
+        "rmse_log": rmse_log,
+        "silog": silog,
+        "sq_rel": sq_rel,
+        "silogloss_loss_func": silogloss_loss_func,
+        "mse_loss_func": mse_loss_func,
+    }
+
 
 def log_loss_metrics(preds, targets, tstep=0, loss_prefix="train"):
-    metrics = calc_loss_metrics(preds,targets)
+    metrics = calc_loss_metrics(preds, targets)
 
     return wandb.log(
         {
@@ -122,4 +138,3 @@ def log_loss_metrics(preds, targets, tstep=0, loss_prefix="train"):
         },
         step=tstep,
     )
-
