@@ -26,3 +26,6 @@ Questions for 25 oct:
 - dropout by uncertainty estimation?
 - zoedepth upgrade using Masked image modelling
 
+7/11:
+- UNstable initialization=
+

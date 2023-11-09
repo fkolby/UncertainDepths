@@ -15,7 +15,6 @@ def infer(model, images, **kwargs):
         else:
             raise NotImplementedError(f"Unknown output type {type(pred)}")
         return pred
-
     pred1 = model(images, **kwargs)
     pred1 = get_depth_from_prediction(pred1)
 

@@ -25,6 +25,22 @@ def retry(how_many_tries=2):
 
     return wrapper
 
+def seed_everything(seed: int):
+    #taken directly from zoedepth
+    import random
+
+    import numpy
+    import torch
+
+    random.seed(seed)
+    numpy.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = True
+
 
 def plot_and_save_tensor_as_fig(tensor: torch.Tensor, figname: str) -> None:
     print(tensor)

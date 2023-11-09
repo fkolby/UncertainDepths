@@ -22,6 +22,7 @@ class KITTI_depth_dataset(Dataset):
         target_transform=None,
         input_height: int = 352,
         input_width: int = 704,
+        pytorch_lightning_in_use: bool = True
     ) -> None:
         self.data_dir = data_dir
         self.path_to_file = (
@@ -38,6 +39,7 @@ class KITTI_depth_dataset(Dataset):
         self.train_or_test = train_or_test
         self.input_height = input_height
         self.input_width = input_width
+        self.pytorch_lightning_in_use = pytorch_lightning_in_use
 
     def __getitem__(self, idx):
         sample_path = self.filenames[idx]
@@ -94,6 +96,7 @@ class KITTIDataModule(pl.LightningDataModule):
         num_workers: int = 8,
         input_height: int = 352,
         input_width: int = 704,
+        pytorch_lightning_in_use = True,
     ) -> None:
         super().__init__()
         self.data_dir = data_dir
@@ -108,6 +111,7 @@ class KITTIDataModule(pl.LightningDataModule):
         self.num_workers = num_workers
         self.input_height = input_height
         self.input_width = input_width
+        self.pytorch_lightning_in_use = pytorch_lightning_in_use
 
     def prepare_data(self) -> None:
         print("setting up datamodule")
@@ -124,6 +128,7 @@ class KITTIDataModule(pl.LightningDataModule):
                 target_transform=self.target_transform,
                 input_height=self.input_height,
                 input_width=self.input_width,
+                pytorch_lightning_in_use=self.pytorch_lightning_in_use,
             )
             print("got to evaluating KITTI train val set")
             self.KITTI_train_set = Subset(
@@ -134,8 +139,8 @@ class KITTIDataModule(pl.LightningDataModule):
             self.KITTI_val_set = Subset(
                 KITTI_train_val_set, np.arange(18525, len(KITTI_train_val_set), dtype=int).tolist()
             )
-            plot_and_save_tensor_as_fig(self.KITTI_train_set[-1][0], "last_train_img")
-            plot_and_save_tensor_as_fig(self.KITTI_val_set[0][0], "first_val_img")
+            #plot_and_save_tensor_as_fig(self.KITTI_train_set[-1][0], "last_train_img")
+            #plot_and_save_tensor_as_fig(self.KITTI_val_set[0][0], "first_val_img")
             assert self.KITTI_train_set[-1][0].shape == self.KITTI_val_set[0][0].shape
 
             print("got to last part of if fit")
@@ -147,6 +152,7 @@ class KITTIDataModule(pl.LightningDataModule):
                 target_transform=self.target_transform,
                 input_height=self.input_height,
                 input_width=self.input_width,
+                pytorch_lightning_in_use=self.pytorch_lightning_in_use,
             )
             self.KITTI_predict_set = KITTI_depth_dataset(
                 data_dir=self.data_dir,
@@ -155,6 +161,7 @@ class KITTIDataModule(pl.LightningDataModule):
                 target_transform=self.target_transform,
                 input_height=self.input_height,
                 input_width=self.input_width,
+                pytorch_lightning_in_use=self.pytorch_lightning_in_use,
             )
 
     def train_dataloader(self) -> DataLoader:
@@ -165,7 +172,7 @@ class KITTIDataModule(pl.LightningDataModule):
             )
 
         return DataLoader(
-            self.KITTI_train_set, batch_size=self.batch_size, num_workers=self.num_workers
+            self.KITTI_train_set, batch_size=self.batch_size, num_workers=self.num_workers,pin_memory=True
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -176,17 +183,17 @@ class KITTIDataModule(pl.LightningDataModule):
             )
 
         return DataLoader(
-            self.KITTI_val_set, batch_size=self.batch_size, num_workers=self.num_workers
+            self.KITTI_val_set, batch_size=self.batch_size, num_workers=self.num_workers,pin_memory=True
         )
 
     def test_dataloader(self) -> DataLoader:
         return DataLoader(
-            self.KITTI_test_set, batch_size=self.batch_size, num_workers=self.num_workers
+            self.KITTI_test_set, batch_size=self.batch_size, num_workers=self.num_workers,pin_memory=True
         )
 
     def predict_dataloader(self) -> DataLoader:
         return DataLoader(
-            self.KITTI_predict_set, batch_size=self.batch_size, num_workers=self.num_workers
+            self.KITTI_predict_set, batch_size=self.batch_size, num_workers=self.num_workers,pin_memory=True
         )
 
 
