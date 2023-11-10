@@ -27,7 +27,7 @@ def colorize(value, vmin=10, vmax=1000, cmap="plasma"):
     cmapper = matplotlib.cm.get_cmap(cmap)
     value = cmapper(value, bytes=True)  # (nxmx4)
 
-    img = value[:, :, :3]
+    img = value[:, :, :3]# :3]
     #     return img.transpose((2, 0, 1))
     return img
 

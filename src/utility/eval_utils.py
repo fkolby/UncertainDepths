@@ -2,9 +2,8 @@ import numpy as np
 import torch
 from src.utility.viz_utils import calc_loss_metrics
 from torch import nn
-import timeit
-import time
 from src.utility.debug_utils import time_since_previous_log
+import pdb
 
 
 # shamelessly stolen from zoedepth repo.
@@ -12,21 +11,22 @@ def compute_metrics(
     gt,
     pred,
     interpolate=True,
-    garg_crop=False,
-    eigen_crop=True,
+    garg_crop=True,
+    eigen_crop=False,
     dataset="kitti",
     min_depth_eval=1e-3,
     max_depth_eval=80,
     **kwargs
 ):
     """Compute metrics of predicted depth maps. Applies cropping and masking as necessary or specified via arguments. Refer to compute_errors for more details on metrics."""
-    time_prev = time.time()
     if "config" in kwargs:
         config = kwargs["config"]
         eigen_crop = config.eval_eigen_crop
+        garg_crop = config.eval_garg_crop
+
         min_depth_eval = config.dataset_params.min_depth
         max_depth_eval = config.dataset_params.max_depth
-    garg_crop = None
+    #garg_crop = None
     if gt.shape[-2:] != pred.shape[-2:] and interpolate:
         pred = nn.functional.interpolate(pred, gt.shape[-2:], mode="bilinear", align_corners=True)
 
@@ -38,7 +38,6 @@ def compute_metrics(
 
     gt_depth = gt.cpu()
     valid_mask = np.logical_and(gt_depth > min_depth_eval, gt_depth < max_depth_eval)
-
     if garg_crop or eigen_crop:
         _, _, gt_height, gt_width = gt_depth.shape
         eval_mask = np.zeros(valid_mask.shape)

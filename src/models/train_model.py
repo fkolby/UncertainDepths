@@ -30,29 +30,29 @@ class KITTI_depth_lightning_module(pl.LightningModule):
         self,
         model,
         loss_function,
-        learning_rate,
-        min_depth,
-        max_depth,
-        input_height,
-        input_width,
-        batch_size,
+        steps_per_epoch:int,
+        cfg,
     ):
         super().__init__()
         self.model = model
         self.loss_function = loss_function
-        self.lr = learning_rate
+        self.lr = cfg.hyperparameters.learning_rate
         self.tstep = 0
-        self.min_depth = min_depth
-        self.max_depth = max_depth
-        self.input_height = input_height
-        self.input_width = input_width
-        self.batch_size = batch_size
+        self.min_depth=cfg.dataset_params.min_depth
+        self.max_depth=cfg.dataset_params.max_depth
+        self.input_height=cfg.dataset_params.input_height
+        self.input_width=cfg.dataset_params.input_width
+        self.batch_size=cfg.hyperparameters.batch_size
+        self.epochs = cfg.trainer_args.max_epochs
+        self.steps_per_epoch = steps_per_epoch
+
 
     def forward(self, inputs):
         return self.model(inputs)
 
     def training_step(self, batch, batch_idx):
         x, y, fullsize_targets = batch
+        
         try:
             assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
                 x[0, 0, :, :].shape == torch.Size((self.input_height, self.input_width))
@@ -73,11 +73,12 @@ class KITTI_depth_lightning_module(pl.LightningModule):
             )
         mask = torch.logical_and(
             y > self.min_depth, y < self.max_depth
-        )  # perhaps also punish above maxdepth during training?
+            )  # perhaps also punish above maxdepth during training?
         loss = self.loss_function(preds * mask, y * mask)
 
+        
         self.log("train_loss", loss)
-        wandb.log({"train_loss": loss}, step=self.tstep)
+        wandb.log({"train_loss": loss, "learning_rate":self.lr_schedulers().get_last_lr()[0]}, step=self.tstep)
 
         fullsize_mask = torch.logical_and(
             fullsize_targets > self.min_depth, fullsize_targets < self.max_depth
@@ -140,9 +141,14 @@ class KITTI_depth_lightning_module(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=self.lr)
-        return optimizer
-
+        optimizer = optim.AdamW(self.parameters(), lr=self.lr)
+        scheduler = optim.lr_scheduler.OneCycleLR(optimizer, max_lr=self.lr, epochs = self.epochs,steps_per_epoch=self.steps_per_epoch)
+        opt_dict = {
+            "lr_scheduler": {"scheduler": scheduler,"interval":"step"},
+            "optimizer": optimizer,
+        }
+        return opt_dict
+        
 
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
 def main(cfg: DictConfig):
@@ -165,20 +171,7 @@ def main(cfg: DictConfig):
     log = logging.getLogger(__name__)
     log.info(OmegaConf.to_yaml(cfg))
     seed_everything(cfg.seed)
-    models_to_test = {
-        "Unet": KITTI_depth_lightning_module(
-            model=BaseUNet(in_channels=3, out_channels=1),
-            loss_function=SILogLoss(),
-            learning_rate=cfg.hyperparameters.learning_rate,
-            min_depth=cfg.dataset_params.min_depth,
-            max_depth=cfg.dataset_params.max_depth,
-            input_height=cfg.dataset_params.input_height,
-            input_width=cfg.dataset_params.input_width,
-            batch_size=cfg.hyperparameters.batch_size,
-        )
-    }
 
-    trainer = pl.Trainer(logger=logger, **trainer_args)
     transform = transforms.Compose(
         [
             transforms.PILToTensor(),
@@ -206,49 +199,54 @@ def main(cfg: DictConfig):
         input_width=cfg.dataset_params.input_width,
     )
     datamodule.setup(stage="fit")
-    trainer.fit(
-        model=model,
-        train_dataloaders=datamodule.train_dataloader(),
-        val_dataloaders=datamodule.val_dataloader(),
-    )
-    trainer.save_checkpoint("example.ckpt")
-    model = KITTI_depth_lightning_module.load_from_checkpoint(
-        "example.ckpt",
-        model=BaseUNet(in_channels=3, out_channels=1).to("cuda"),
-        loss_function=MSELoss(),
-        learning_rate=cfg.hyperparameters.learning_rate,
-        min_depth=cfg.dataset_params.min_depth,
-        max_depth=cfg.dataset_params.max_depth,
-        input_height=cfg.dataset_params.input_height,
-        input_width=cfg.dataset_params.input_width,
-        batch_size=cfg.hyperparameters.batch_size,
-    )
-
     datamoduleEval = KITTIDataModule(
-        data_dir=cfg.dataset_params.data_dir,
-        batch_size=cfg.hyperparameters.batch_size,
-        transform=transform,
-        target_transform=target_transform,
-        num_workers=cfg.dataset_params.num_workers,
-        input_height=cfg.dataset_params.input_height,
-        input_width=cfg.dataset_params.input_width,
-        pytorch_lightning_in_use=False,  # KEY ARGUMENT HERE FOR SPEED.
-    )
+            data_dir=cfg.dataset_params.data_dir,
+            batch_size=cfg.hyperparameters.batch_size,
+            transform=transform,
+            target_transform=target_transform,
+            num_workers=cfg.dataset_params.num_workers,
+            input_height=cfg.dataset_params.input_height,
+            input_width=cfg.dataset_params.input_width,
+            pytorch_lightning_in_use=False,  # KEY ARGUMENT HERE FOR SPEED.
+        )
 
     datamoduleEval.setup(stage="fit")
-    pprint(
-        eval_model(
-            model=model, model_name="Unet", test_loader=datamoduleEval.val_dataloader(), config=cfg
+
+    if cfg.model_type=="BaseUNet":
+
+        model = KITTI_depth_lightning_module(
+                model=BaseUNet(in_channels=3, out_channels=1, cfg=cfg),
+                loss_function=SILogLoss(),
+                cfg=cfg,
+                steps_per_epoch=len(datamodule.train_dataloader()),
+                
+            )
+        
+        
+        trainer = pl.Trainer(logger=logger, **trainer_args)
+     
+        trainer.fit(
+            model=model,
+            train_dataloaders=datamodule.train_dataloader(),
+            val_dataloaders=datamodule.val_dataloader(),
         )
-    )
-    repo = "isl-org/ZoeDepth"
-    ZoeNK = torch.hub.load(repo, "ZoeD_NK", pretrained=True)
-    print("now it errors")
-    pprint(
-        eval_model(
-            model=ZoeNK, model_name="ZoeNK", test_loader=datamoduleEval.val_dataloader(), config=cfg
+        trainer.save_checkpoint(f"{cfg.model_type}.ckpt")
+
+        model.eval().to("cuda")
+        pprint(
+            eval_model(
+                model=model, model_name="Unet", test_loader=datamoduleEval.val_dataloader(), config=cfg
+            )
         )
-    )
+    elif cfg.model_type =="ZoeNK":
+        repo = "isl-org/ZoeDepth"
+        ZoeNK = torch.hub.load(repo, "ZoeD_NK", pretrained=True)
+        print("now it errors")
+        pprint(
+            eval_model(
+                model=ZoeNK, model_name="ZoeNK", test_loader=datamoduleEval.val_dataloader(), config=cfg
+            )
+        )
 
 
 if __name__ == "__main__":

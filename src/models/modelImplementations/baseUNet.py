@@ -61,8 +61,9 @@ class CropAndConcatenateOp(nn.Module):
 
 
 class BaseUNet(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, in_debug: bool = False):
+    def __init__(self, in_channels: int, out_channels: int, in_debug: bool = False, cfg = None):
         super().__init__()
+        self.cfg = cfg
         self.down_conv = nn.ModuleList(
             [DoubleConv(i, o) for (i, o) in [(in_channels, 64), (64, 128), (128, 256), (256, 512)]]
         )
@@ -77,6 +78,7 @@ class BaseUNet(nn.Module):
         )
         self.concat = nn.ModuleList([CropAndConcatenateOp() for _ in range(4)])
         self.final_conv = nn.Conv2d(64, out_channels, kernel_size=1)
+        self.sigmoid = nn.Sigmoid()
         self.in_debug = in_debug
 
     def forward(self, x: torch.Tensor):
@@ -104,7 +106,7 @@ class BaseUNet(nn.Module):
 
         x = self.final_conv(x)
         debugxshape(x, in_debug=self.in_debug)
-
+        x = self.sigmoid(x)*(self.cfg.dataset_params.max_depth-self.cfg.dataset_params.min_depth)+self.cfg.dataset_params.min_depth #shift to min_depth,max_depth
         return x
 
 
