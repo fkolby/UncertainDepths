@@ -26,7 +26,7 @@ def compute_metrics(
 
         min_depth_eval = config.dataset_params.min_depth
         max_depth_eval = config.dataset_params.max_depth
-    #garg_crop = None
+    # garg_crop = None
     if gt.shape[-2:] != pred.shape[-2:] and interpolate:
         pred = nn.functional.interpolate(pred, gt.shape[-2:], mode="bilinear", align_corners=True)
 

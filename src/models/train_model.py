@@ -199,7 +199,9 @@ def main(cfg: DictConfig):
         input_width=cfg.dataset_params.input_width,
     )
     datamodule.setup(stage="fit")
-    datamoduleEval = KITTIDataModule(
+    
+    if cfg.model_type != "ZoeNK":
+        datamoduleEval = KITTIDataModule(
             data_dir=cfg.dataset_params.data_dir,
             batch_size=cfg.hyperparameters.batch_size,
             transform=transform,
@@ -210,7 +212,23 @@ def main(cfg: DictConfig):
             pytorch_lightning_in_use=False,  # KEY ARGUMENT HERE FOR SPEED.
         )
 
-    datamoduleEval.setup(stage="fit")
+        datamoduleEval.setup(stage="fit")
+    else:
+        
+        #no normalization, just straight up load in. (apart from center-crop and randomcrop)
+        datamoduleEval = KITTIDataModule(
+            data_dir=cfg.dataset_params.data_dir,
+            batch_size=cfg.hyperparameters.batch_size,
+            transform=transforms.Compose(transforms.PILToTensor(),
+                                         ),
+        transforms.CenterCrop((352, 1216)),
+            target_transform=target_transform,
+            num_workers=cfg.dataset_params.num_workers,
+            input_height=cfg.dataset_params.input_height,
+            input_width=cfg.dataset_params.input_width,
+            pytorch_lightning_in_use=False,  # KEY ARGUMENT HERE FOR SPEED.
+        )
+
 
     if cfg.model_type=="BaseUNet":
 

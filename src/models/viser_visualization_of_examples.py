@@ -11,8 +11,9 @@ from torchvision.transforms import Resize
 import torch
 import kornia
 
-def get_intrinsics(H,W):
-    #Inspired by gradio demo of ZoeDepth
+
+def get_intrinsics(H, W):
+    # Inspired by gradio demo of ZoeDepth
     """
     Intrinsics for a pinhole camera model.
     Assume fov of 55 degrees and central principal point.
@@ -20,10 +21,10 @@ def get_intrinsics(H,W):
     f = 0.5 * W / np.tan(0.5 * 55 * np.pi / 180.0)
     cx = 0.5 * W
     cy = 0.5 * H
-    return torch.tensor([[f, 0, cx,0],
-                     [0, f, cy,0],
-                     [0, 0, 1,0],
-                     [0, 0, 0,1]],dtype=torch.float32)
+    return torch.tensor(
+        [[f, 0, cx, 0], [0, f, cy, 0], [0, 0, 1, 0], [0, 0, 0, 1]], dtype=torch.float32
+    )
+
 
 def img_dicts():
     d = {"depth": [], "img": [], "preds": []}
@@ -64,7 +65,6 @@ def img_dicts():
     return d
 
 
-
 def main():
     server = viser.ViserServer()
     depths = img_dicts()
@@ -84,17 +84,17 @@ def main():
         )
         gui_vector3 = server.add_gui_vector3(
             "Pixeldensity",
-            initial_value=(1.0, -1.0, 1.0),#(40.0, 40.0, 1.0)
+            initial_value=(1.0, -1.0, 1.0),  # (40.0, 40.0, 1.0)
             step=10,
         )
         campos = server.add_gui_vector3(
             "Campos",
-            initial_value=(0,0,0),#(37.0, 39.0, -6.0),
+            initial_value=(0, 0, 0),  # (37.0, 39.0, -6.0),
             step=0.1,
         )
         with server.add_gui_folder("Text toggle"):
             img_type = server.add_gui_dropdown("Img type plane", ("preds", "depth", "img"))
-            model = server.add_gui_dropdown("model", ( "Unet", "ZoeNK"))
+            model = server.add_gui_dropdown("model", ("Unet", "ZoeNK"))
             img_num = server.add_gui_vector2(
                 "img number",
                 initial_value=(2, -1),
@@ -105,14 +105,16 @@ def main():
                 initial_value=(255, 0, 0),
             )
     depth = depths[model.value][img_type.value][int(img_num.value[0])]
-    K = torch.unsqueeze(get_intrinsics(depth.shape[0],depth.shape[1]),dim=0)
-    E = torch.unsqueeze(torch.eye(4,dtype=torch.float32),dim=0)
+    K = torch.unsqueeze(get_intrinsics(depth.shape[0], depth.shape[1]), dim=0)
+    E = torch.unsqueeze(torch.eye(4, dtype=torch.float32), dim=0)
     print(E.shape)
-    E[:,2,3] = 2.
+    E[:, 2, 3] = 2.0
     print(K.dtype)
     print(E)
 
-    korniacamera = kornia.geometry.camera.PinholeCamera(K, E, torch.ones(1)*depth.shape[0], torch.ones(1)*depth.shape[0])
+    korniacamera = kornia.geometry.camera.PinholeCamera(
+        K, E, torch.ones(1) * depth.shape[0], torch.ones(1) * depth.shape[0]
+    )
     print(depth.shape)
     img = depths[model.value]["img"][int(img_num.value[0])]
     print(img.shape)
@@ -144,7 +146,7 @@ def main():
     @server.on_client_connect
     def _(client: viser.ClientHandle) -> None:
         print("new client!")
-        client.camera.position = (0,0,0) #(37, 39, -6)
+        client.camera.position = (0, 0, 0)  # (37, 39, -6)
         client.camera.wxyz = (0, 9.80595212e-09, 4.99903834e-07, -9.99807668e-01)
 
         # client.camera.wxyz = (0,0,0,0)
@@ -163,8 +165,8 @@ def main():
     while True:
         depth = depths[model.value][img_type.value][int(img_num.value[0])]
         img = depths[model.value]["img"][int(img_num.value[0])]
-        depthcolumn = torch.zeros((depth.shape[0]*depth.shape[1]))
-        xycolumn = torch.zeros((depth.shape[0]*depth.shape[1],2))
+        depthcolumn = torch.zeros((depth.shape[0] * depth.shape[1]))
+        xycolumn = torch.zeros((depth.shape[0] * depth.shape[1], 2))
         print(depth.shape)
 
         if img_type.value != "img":
@@ -174,21 +176,21 @@ def main():
             )  # (-1, 3))
             for y in range(depth.shape[0]):
                 for x in range(depth.shape[1]):
-                    xycolumn[y*depth.shape[1]+x,:] = torch.tensor([x,y])
-                    depthcolumn[y*depth.shape[1]+x] = torch.tensor(depth[y,x],dtype=torch.float32)
-                    colors[y * depth.shape[1] + x, :] = (
-                        img[:, y, x] * 255)
-                    
-                    
+                    xycolumn[y * depth.shape[1] + x, :] = torch.tensor([x, y])
+                    depthcolumn[y * depth.shape[1] + x] = torch.tensor(
+                        depth[y, x], dtype=torch.float32
+                    )
+                    colors[y * depth.shape[1] + x, :] = img[:, y, x] * 255
 
-
-                    #if (y<5 or y>200) and x<5:
+                    # if (y<5 or y>200) and x<5:
                     #    print(torch.squeeze(korniacamera.unproject(torch.tensor([[x,y]],dtype=torch.float32),depth[y,x])))
-                    #point_positions[y * depth.shape[1] + x, :] = torch.squeeze(korniacamera.unproject(torch.tensor([[x,y]],dtype=torch.float32),depth[y,x]))
+                    # point_positions[y * depth.shape[1] + x, :] = torch.squeeze(korniacamera.unproject(torch.tensor([[x,y]],dtype=torch.float32),depth[y,x]))
             xycolumn.to(torch.float32)
-            depthcolumn = torch.unsqueeze(depthcolumn.to(torch.float32),dim=1)
-            point_positions = torch.squeeze(korniacamera.unproject(xycolumn,depthcolumn)).numpy(force=True)
-                    
+            depthcolumn = torch.unsqueeze(depthcolumn.to(torch.float32), dim=1)
+            point_positions = torch.squeeze(korniacamera.unproject(xycolumn, depthcolumn)).numpy(
+                force=True
+            )
+
             """
             point_positions[y * depth.shape[1] + x, 0] = -1 * (x - depth.shape[1] / 2)
             point_positions[y * depth.shape[1] + x, 1] = -y + depth.shape[0] / 2

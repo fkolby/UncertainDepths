@@ -61,7 +61,7 @@ class CropAndConcatenateOp(nn.Module):
 
 
 class BaseUNet(nn.Module):
-    def __init__(self, in_channels: int, out_channels: int, in_debug: bool = False, cfg = None):
+    def __init__(self, in_channels: int, out_channels: int, in_debug: bool = False, cfg=None):
         super().__init__()
         self.cfg = cfg
         self.down_conv = nn.ModuleList(
@@ -106,7 +106,11 @@ class BaseUNet(nn.Module):
 
         x = self.final_conv(x)
         debugxshape(x, in_debug=self.in_debug)
-        x = self.sigmoid(x)*(self.cfg.dataset_params.max_depth-self.cfg.dataset_params.min_depth)+self.cfg.dataset_params.min_depth #shift to min_depth,max_depth
+        x = (
+            self.sigmoid(x)
+            * (self.cfg.dataset_params.max_depth - self.cfg.dataset_params.min_depth)
+            + self.cfg.dataset_params.min_depth
+        )  # shift to min_depth,max_depth
         return x
 
 
