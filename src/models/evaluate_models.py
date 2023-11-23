@@ -207,28 +207,28 @@ def eval_model(
                     vmax=config.dataset_params.max_depth,
                     step=j * 1e10,
                 )
-                im.save(os.path.join(config.save_images_path, f"{j}_{model_name}_img.png"))
+                im.save(os.path.join(config.save_images_path,"/images/", f"{j}_{model_name}_img.png"))
                 print(d.shape, p.shape, image.shape, pred.shape, depth.shape)
                 transforms.ToPILImage()(d).save(
-                    os.path.join(config.save_images_path, f"{j}_{model_name}_depth.png")
+                    os.path.join(config.save_images_path,"/images/", f"{j}_{model_name}_depth.png")
                 )
                 transforms.ToPILImage()(p).save(
-                    os.path.join(config.save_images_path, f"{j}_{model_name}_pred.png")
+                    os.path.join(config.save_images_path,"/images/", f"{j}_{model_name}_pred.png")
                 )
                 transforms.ToPILImage()(v).save(
-                    os.path.join(config.save_images_path, f"{j}_{model_name}_var.png")
+                    os.path.join(config.save_images_path,"/images/", f"{j}_{model_name}_var.png")
                 )
 
                 np.save(
-                    os.path.join(config.save_images_path, f"np_img_{model_name}_{j}.npy"),
+                    os.path.join(config.save_images_path,"/images/", f"np_img_{model_name}_{j}.npy"),
                     torch.squeeze(denormalize(image), dim=0).numpy(force=True),
                 )
                 np.save(
-                    os.path.join(config.save_images_path, f"np_depth_{model_name}_{j}.npy"),
+                    os.path.join(config.save_images_path,"/images/", f"np_depth_{model_name}_{j}.npy"),
                     torch.squeeze(depth, dim=0).numpy(force=True),
                 )
                 np.save(
-                    os.path.join(config.save_images_path, f"np_preds_{model_name}_{j}.npy"),
+                    os.path.join(config.save_images_path,"/images/", f"np_preds_{model_name}_{j}.npy"),
                     torch.squeeze(pred, dim=0).numpy(force=True),
                 )
                 uncertainty = torch.var(preds, dim=0)
@@ -295,11 +295,11 @@ def eval_model(
                 plt.clf()
 
     uncertainty_df.to_csv(
-        os.path.join(config.save_images_path, f"uncertainty_df_{config.models.model_type}"),
+        os.path.join(config.save_images_path,"/uncertainty_df/" f"uncertainty_df_{config.models.model_type}"),
         index=False,
     )
     save_uncertainty_plots(
-        uncertainty_df, os.path.join(config.save_images_path, f"plot_{config.models.model_type}_")
+        uncertainty_df, os.path.join(config.save_images_path,"/plots/" f"plot_{config.models.model_type}_")
     )
 
     metrics.update(losses)
