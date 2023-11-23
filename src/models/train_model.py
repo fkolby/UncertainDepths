@@ -8,7 +8,6 @@ import hydra
 import numpy as np
 import PIL
 import pytorch_lightning as pl
-
 import seaborn as sns
 import torch
 from lightning.pytorch import callbacks, loggers
@@ -16,6 +15,7 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import callbacks
 from torch import nn, optim
 from torch.nn import MSELoss
+from torchinfo import summary
 from torchvision import transforms
 
 import wandb
@@ -26,7 +26,6 @@ from src.models.modelImplementations.baseUNet import BaseUNet
 from src.models.modelImplementations.nnjUnet import stochastic_unet
 from src.utility.train_utils import seed_everything
 from src.utility.viz_utils import log_images, log_loss_metrics
-from torchinfo import summary
 
 
 class KITTI_depth_lightning_module(pl.LightningModule):
@@ -183,7 +182,6 @@ def main(cfg: DictConfig):
     logger = loggers.WandbLogger(project="UncertainDepths")
     log = logging.getLogger(__name__)
     log.info(OmegaConf.to_yaml(cfg))
-    seed_everything(cfg.seed)
 
     # =========================== TRANSFORMS & DATAMODULES ===============================================
 
@@ -204,18 +202,26 @@ def main(cfg: DictConfig):
             transforms.Lambda(lambda x: x / 256),  # 256 as per devkit
         ]
     )
-    datamodule = KITTIDataModule(
-        data_dir=cfg.dataset_params.data_dir,
-        batch_size=cfg.hyperparameters.batch_size,
-        transform=transform,
-        target_transform=target_transform,
-        num_workers=cfg.dataset_params.num_workers,
-        input_height=cfg.dataset_params.input_height,
-        input_width=cfg.dataset_params.input_width,
-    )
-    datamodule.setup(stage="fit")
+    if (
+        cfg.models.model_type != "Ensemble"
+    ):  # if ensemble we need to seed - and therefore instantiate dataloaders seperately (they should have different seed for every model)( Zoe does not use this)
+        seed_everything(cfg.seed)
 
-    if cfg.models.model_type != "ZoeNK":
+        datamodule = KITTIDataModule(
+            data_dir=cfg.dataset_params.data_dir,
+            batch_size=cfg.hyperparameters.batch_size,
+            transform=transform,
+            target_transform=target_transform,
+            num_workers=cfg.dataset_params.num_workers,
+            input_height=cfg.dataset_params.input_height,
+            input_width=cfg.dataset_params.input_width,
+        )
+        datamodule.setup(stage="fit")
+
+    if cfg.models.model_type not in [
+        "ZoeNK",
+        "Ensemble",
+    ]:  # Zoe does not want normalization (does it internally), Ensemble needs new seed for each run
         datamoduleEval = KITTIDataModule(
             data_dir=cfg.dataset_params.data_dir,
             batch_size=cfg.hyperparameters.batch_size,
@@ -286,13 +292,84 @@ def main(cfg: DictConfig):
                     model=model,
                     model_name="stochastic_unet",
                     test_loader=datamoduleEval.val_dataloader(),
-                    train_loader=datamodule.train_dataloader(),
+                    dataloader_for_hessian=datamodule.val_dataloader(),  # when in actual (final) test, we should do val_loader here, but test_loader for test_loader.
                     test_data_img_nums=len(datamoduleEval.KITTI_val_set),
                     config=cfg,
                 )
             )
+        case "Ensemble":
+            for i in range(cfg.models.n_models):
+                seed_everything(
+                    cfg.seed + i
+                )  # Seed both dataloaders and neural net initialization.
 
+                datamodule = KITTIDataModule(
+                    data_dir=cfg.dataset_params.data_dir,
+                    batch_size=cfg.hyperparameters.batch_size,
+                    transform=transform,
+                    target_transform=target_transform,
+                    num_workers=cfg.dataset_params.num_workers,
+                    input_height=cfg.dataset_params.input_height,
+                    input_width=cfg.dataset_params.input_width,
+                )
+                datamodule.setup(stage="fit")
+
+                datamoduleEval = KITTIDataModule(
+                    data_dir=cfg.dataset_params.data_dir,
+                    batch_size=cfg.hyperparameters.batch_size,
+                    transform=transform,
+                    target_transform=target_transform,
+                    num_workers=cfg.dataset_params.num_workers,
+                    input_height=cfg.dataset_params.input_height,
+                    input_width=cfg.dataset_params.input_width,
+                    pytorch_lightning_in_use=False,  # KEY ARGUMENT HERE FOR SPEED.
+                )
+
+                datamoduleEval.setup(stage="fit")
+
+                neuralnet = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
+                summary(neuralnet, (1, 3, 352, 704), depth=300)
+
+                model = KITTI_depth_lightning_module(
+                    model=neuralnet,
+                    loss_function=loss_function,
+                    cfg=cfg,
+                    steps_per_epoch=len(datamodule.train_dataloader()),
+                )
+
+                trainer = pl.Trainer(logger=logger, **trainer_args)
+
+                trainer.fit(
+                    model=model,
+                    train_dataloaders=datamodule.train_dataloader(),
+                    val_dataloaders=datamodule.val_dataloader(),
+                )
+                trainer.save_checkpoint(f"{cfg.models.model_type}.ckpt")
+                # now we dont need (or want) lightning anymore
+                torch.save(
+                    model._modules["model"].state_dict(),
+                    f"{cfg.models.model_type}_{i}.pt",
+                )
+            model = stochastic_unet(
+                in_channels=3, out_channels=1, cfg=cfg
+            )  # just loading it in, to have something to passe to eval_model function. this specific model gets overwritten in eval_model.
+
+            #### EDIT IN EVAL_MODEL FOR ENSEMBLES.
+            model.load_state_dict(torch.load(f"{cfg.models.model_type}.pt"))
+
+            model.eval().to("cuda")
+            pprint(
+                eval_model(
+                    model=model,
+                    model_name="stochastic_unet",
+                    test_loader=datamoduleEval.val_dataloader(),
+                    dataloader_for_hessian=datamodule.val_dataloader(),  # when in actual (final) test, we should do val_loader here, but test_loader for test_loader.
+                    test_data_img_nums=len(datamoduleEval.KITTI_val_set),
+                    config=cfg,
+                )
+            )
         case "BaseUNet":
+            raise NotImplementedError
             model = KITTI_depth_lightning_module(
                 model=BaseUNet(in_channels=3, out_channels=1, cfg=cfg),
                 loss_function=loss_function,

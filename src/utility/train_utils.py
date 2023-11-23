@@ -4,8 +4,6 @@ import random
 
 import hydra
 import matplotlib
-
-# matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import torch
 from omegaconf import DictConfig, OmegaConf

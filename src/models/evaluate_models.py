@@ -2,7 +2,9 @@ import os
 import pdb
 import timeit
 
+import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -10,13 +12,11 @@ from PIL import Image
 from pytorch_laplace import MSEHessianCalculator
 from pytorch_laplace.laplace.diag import DiagLaplace
 from tqdm import tqdm
-import matplotlib.pyplot as plt
-import pandas as pd
 
 import wandb
 from src.models.predict_model import infer
 from src.utility.debug_utils import time_since_previous_log
-from src.utility.eval_utils import filter_valid, calc_loss_metrics
+from src.utility.eval_utils import calc_loss_metrics, filter_valid
 from src.utility.other_utils import RunningAverageDict
 from src.utility.viz_utils import colorize, denormalize, log_images
 
@@ -27,7 +27,7 @@ def eval_model(
     model_name,
     test_loader,
     config,
-    train_loader=None,
+    dataloader_for_hessian=None,
     round_vals=True,
     round_precision=3,
     test_data_img_nums=-1,
@@ -46,15 +46,15 @@ def eval_model(
         laplace = DiagLaplace()
         print("Calcing hessian")
         a = 0
-        for image, _, _ in train_loader:
+        for image, _, _ in dataloader_for_hessian:  # should be val, when on test-set.
             a += 1
             # compute hessian approximation
-            print(a, "of ", len(train_loader))
+            print(a, "of ", len(dataloader_for_hessian))
             hessian += hessian_calculator.compute_hessian(
                 x=image.to(device),
                 model=model.stochastic_net,
             )
-            if config.in_debug and a > 5:
+            if config.in_debug and a > 25:
                 break
 
         print("Done calcing hessian")
@@ -64,6 +64,7 @@ def eval_model(
         standard_deviation = laplace.posterior_scale(hessian, prior_prec=1)
 
     # ---------------------------------------------------------------------      Predicting  ------------------------------------
+
     depths_all_samples = torch.Tensor().to(device)
     preds_all_samples = torch.Tensor().to(device)
     uncertainty_all_samples = torch.Tensor().to(device)
@@ -207,28 +208,36 @@ def eval_model(
                     vmax=config.dataset_params.max_depth,
                     step=j * 1e10,
                 )
-                im.save(os.path.join(config.save_images_path,"/images/", f"{j}_{model_name}_img.png"))
+                im.save(
+                    os.path.join(config.save_images_path, "/images/", f"{j}_{model_name}_img.png")
+                )
                 print(d.shape, p.shape, image.shape, pred.shape, depth.shape)
                 transforms.ToPILImage()(d).save(
-                    os.path.join(config.save_images_path,"/images/", f"{j}_{model_name}_depth.png")
+                    os.path.join(config.save_images_path, "/images/", f"{j}_{model_name}_depth.png")
                 )
                 transforms.ToPILImage()(p).save(
-                    os.path.join(config.save_images_path,"/images/", f"{j}_{model_name}_pred.png")
+                    os.path.join(config.save_images_path, "/images/", f"{j}_{model_name}_pred.png")
                 )
                 transforms.ToPILImage()(v).save(
-                    os.path.join(config.save_images_path,"/images/", f"{j}_{model_name}_var.png")
+                    os.path.join(config.save_images_path, "/images/", f"{j}_{model_name}_var.png")
                 )
 
                 np.save(
-                    os.path.join(config.save_images_path,"/images/", f"np_img_{model_name}_{j}.npy"),
+                    os.path.join(
+                        config.save_images_path, "/images/", f"np_img_{model_name}_{j}.npy"
+                    ),
                     torch.squeeze(denormalize(image), dim=0).numpy(force=True),
                 )
                 np.save(
-                    os.path.join(config.save_images_path,"/images/", f"np_depth_{model_name}_{j}.npy"),
+                    os.path.join(
+                        config.save_images_path, "/images/", f"np_depth_{model_name}_{j}.npy"
+                    ),
                     torch.squeeze(depth, dim=0).numpy(force=True),
                 )
                 np.save(
-                    os.path.join(config.save_images_path,"/images/", f"np_preds_{model_name}_{j}.npy"),
+                    os.path.join(
+                        config.save_images_path, "/images/", f"np_preds_{model_name}_{j}.npy"
+                    ),
                     torch.squeeze(pred, dim=0).numpy(force=True),
                 )
                 uncertainty = torch.var(preds, dim=0)
@@ -295,11 +304,14 @@ def eval_model(
                 plt.clf()
 
     uncertainty_df.to_csv(
-        os.path.join(config.save_images_path,"/uncertainty_df/" f"uncertainty_df_{config.models.model_type}"),
+        os.path.join(
+            config.save_images_path, "/uncertainty_df/" f"uncertainty_df_{config.models.model_type}"
+        ),
         index=False,
     )
     save_uncertainty_plots(
-        uncertainty_df, os.path.join(config.save_images_path,"/plots/" f"plot_{config.models.model_type}_")
+        uncertainty_df,
+        os.path.join(config.save_images_path, "/plots/" f"plot_{config.models.model_type}_"),
     )
 
     metrics.update(losses)
