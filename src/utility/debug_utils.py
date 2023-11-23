@@ -1,5 +1,6 @@
-import torch
 import time
+
+import torch
 
 
 def shape_and_print_tensor(x: torch.Tensor, log):

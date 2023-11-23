@@ -1,13 +1,15 @@
-import matplotlib.cm
 import pdb
-import wandb
+import time
+
+import matplotlib.cm
 import numpy as np
 import torch
+from torch.nn import MSELoss
 from torchvision import transforms
+
+import wandb
 from src.models.loss import SILogLoss
 from src.utility.debug_utils import time_since_previous_log
-from torch.nn import MSELoss
-import time
 
 
 ## function found from ADABINS (https://github.com/shariqfarooq123/AdaBins/blob/main/utils.pdepth)
@@ -36,12 +38,13 @@ def denormalize(x, device="cpu"):
     mean = torch.Tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1).to(device)
     std = torch.Tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1).to(device)
     if len(x.shape) == 3:
-        return (x.unsqueeze(0).to(device=device) * std + mean).squeeze()
+        out = (x.unsqueeze(0).to(device=device) * std + mean).squeeze()
     elif len(x.shape) == 4:
-        return x * std + mean
+        out = x * std + mean
     else:
         err = f"Expected x to be either BxCxHxW or CxHxW, but got x with shape {x.shape}"
         raise Exception(err)
+    return torch.clamp(out, 0, 1)
 
 
 def log_images(img, depth, pred, vmin, vmax, step):
@@ -50,6 +53,10 @@ def log_images(img, depth, pred, vmin, vmax, step):
     depth = colorize(depth, vmin=vmin, vmax=vmax)
 
     pred = colorize(pred, vmin=vmin, vmax=vmax)
+    if step > 5e9:
+        print(
+            denormalize(img.shape), depth.shape, pred.shape
+        )  # debugging error message of non-matching image sizes - error in WandB UI
     wandb.log(
         {
             "images": [
@@ -81,6 +88,7 @@ def log_images(img, depth, pred, vmin, vmax, step):
 
 
 def calc_loss_metrics(preds, targets):
+    """Calculates relevant loss metrics - actual metrics"""
     preds = preds.cpu()
     targets = targets.cpu()
     thresh = torch.maximum((targets / preds), (preds / targets))

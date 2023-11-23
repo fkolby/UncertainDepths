@@ -1,13 +1,15 @@
-import lightning.pytorch as pl
-import pdb
-import numpy as np
-from src.utility.train_utils import plot_and_save_tensor_as_fig, random_crop
-from PIL import Image
-import pandas as pd
-from torchvision import transforms
-import torch
-from torch.utils.data import DataLoader, Dataset, Subset
 import os
+import pdb
+
+import lightning.pytorch as pl
+import numpy as np
+import pandas as pd
+import torch
+from PIL import Image
+from torch.utils.data import DataLoader, Dataset, Subset
+from torchvision import transforms
+
+from src.utility.train_utils import plot_and_save_tensor_as_fig, random_crop
 
 # from src.data.extract_paths_to_csv import extract_file_paths_to_csv
 ### inspired by adabins dataloading.
@@ -164,7 +166,7 @@ class KITTIDataModule(pl.LightningDataModule):
                 pytorch_lightning_in_use=self.pytorch_lightning_in_use,
             )
 
-    def train_dataloader(self) -> DataLoader:
+    def train_dataloader(self, shuffle=True) -> DataLoader:
         print("hi train_loader called")
         if self.KITTI_train_set is None:
             raise NameError(
@@ -173,12 +175,13 @@ class KITTIDataModule(pl.LightningDataModule):
 
         return DataLoader(
             self.KITTI_train_set,
+            shuffle=shuffle,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             pin_memory=True,
         )
 
-    def val_dataloader(self) -> DataLoader:
+    def val_dataloader(self, shuffle=False) -> DataLoader:
         print("val loading!")
         if self.KITTI_val_set is None:
             raise NameError(
@@ -187,22 +190,16 @@ class KITTIDataModule(pl.LightningDataModule):
 
         return DataLoader(
             self.KITTI_val_set,
+            shuffle=shuffle,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             pin_memory=True,
         )
 
-    def test_dataloader(self) -> DataLoader:
+    def test_dataloader(self, shuffle=False) -> DataLoader:
         return DataLoader(
             self.KITTI_test_set,
-            batch_size=self.batch_size,
-            num_workers=self.num_workers,
-            pin_memory=True,
-        )
-
-    def predict_dataloader(self) -> DataLoader:
-        return DataLoader(
-            self.KITTI_predict_set,
+            shuffle=shuffle,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             pin_memory=True,

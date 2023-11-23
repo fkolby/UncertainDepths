@@ -27,5 +27,13 @@ Questions for 25 oct:
 - zoedepth upgrade using Masked image modelling
 
 7/11:
-- UNstable initialization=
+- UNstable initialization=?
+- Eigen crop for evalutaion?
+
+16/11
+- Ensembles? just regular ones, or...?
+- Do dropout during training also (for regularization benefit?)
+- Hessian += ??? too high variance, no/len?
+
+
 

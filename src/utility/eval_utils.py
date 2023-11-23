@@ -1,15 +1,18 @@
-import numpy as np
-import torch
-from src.utility.viz_utils import calc_loss_metrics
-from torch import nn
-from src.utility.debug_utils import time_since_previous_log
 import pdb
 
+import numpy as np
+import torch
+from torch import nn
 
-# shamelessly stolen from zoedepth repo.
-def compute_metrics(
+from src.utility.debug_utils import time_since_previous_log
+from src.utility.viz_utils import calc_loss_metrics
+
+
+# shamelessly inspired by Zoedepth
+def filter_valid(
     gt,
     pred,
+    uncertainty,
     interpolate=True,
     garg_crop=True,
     eigen_crop=False,
@@ -65,5 +68,4 @@ def compute_metrics(
         else:
             eval_mask = np.ones(valid_mask.shape)
     valid_mask = np.logical_and(valid_mask, eval_mask)
-    out = calc_loss_metrics(gt_depth[valid_mask], pred[valid_mask])
-    return out
+    return gt_depth[valid_mask], pred[valid_mask], uncertainty[valid_mask]

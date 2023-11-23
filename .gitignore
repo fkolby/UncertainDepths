@@ -106,6 +106,6 @@ src/nnj/
 wandb/
 /src/wandb/
 /src/outputs/
-/src/models/outputs/
+/src/models/outputs/ 
 
 

@@ -1,13 +1,14 @@
-import matplotlib
-import hydra
-from omegaconf import DictConfig, OmegaConf
+import os
 import pdb
+import random
+
+import hydra
+import matplotlib
 
 # matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import torch
-import os
-import random
+from omegaconf import DictConfig, OmegaConf
 
 
 def retry(how_many_tries=2):

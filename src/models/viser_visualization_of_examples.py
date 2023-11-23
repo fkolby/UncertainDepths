@@ -2,14 +2,16 @@
 
 Examples of basic GUI elements that we can create, read from, and write to."""
 
+import os
 import time
 from copy import deepcopy
-import numpy as np
-import viser
-import os
-from torchvision.transforms import Resize
-import torch
+
 import kornia
+import numpy as np
+import torch
+from torchvision.transforms import Resize
+
+import viser
 
 
 def get_intrinsics(H, W):
@@ -41,11 +43,18 @@ def img_dicts():
         print(el)
         print(torch.tensor(np.load(os.path.join(path_to_pics, el))).shape)
         if im_type == "img":  # Resize, so preds/depths can be color-corrected
-            d[model][im_type] = d[model][im_type] + [
-                Resize((352, 704))(torch.tensor(np.load(os.path.join(path_to_pics, el)))).numpy(
-                    force=True
-                )
-            ]
+            if model == "ZoeNK":
+                d[model][im_type] = d[model][im_type] + [
+                    Resize((352, 704))(
+                        torch.tensor(np.load(os.path.join(path_to_pics, el))) / 255.0
+                    ).numpy(force=True)
+                ]
+            else:
+                d[model][im_type] = d[model][im_type] + [
+                    Resize((352, 704))(torch.tensor(np.load(os.path.join(path_to_pics, el)))).numpy(
+                        force=True
+                    )
+                ]
         elif im_type == "depth":  # Resize, so preds/depths can be color-corrected
             d[model][im_type] = d[model][im_type] + [
                 Resize((352, 704))(
@@ -108,7 +117,7 @@ def main():
     K = torch.unsqueeze(get_intrinsics(depth.shape[0], depth.shape[1]), dim=0)
     E = torch.unsqueeze(torch.eye(4, dtype=torch.float32), dim=0)
     print(E.shape)
-    E[:, 2, 3] = 2.0
+    # E[:, 2, 3] = 2.0
     print(K.dtype)
     print(E)
 
@@ -120,7 +129,7 @@ def main():
     print(img.shape)
     print(img)
     print(img[:, :20, :20])
-    # Pre-generate a point cloud to send.
+    # Pre-generate a point cloud to send.s
     # point_positions = np.repeat(np.expand_dims(depth,axis=2), 3, axis=2) #np.random.uniform(low=-1.0, high=1.0, size=(5000, 3))
     point_positions = np.zeros((depth.shape[0] * depth.shape[1], 3))
     print(point_positions.shape)
@@ -132,12 +141,12 @@ def main():
     for y in range(depth.shape[0]):
         for x in range(depth.shape[1]):
             point_positions[y * depth.shape[1] + x, 0] = x - depth.shape[1] / 2
-            point_positions[y * depth.shape[1] + x, 1] = -y + depth.shape[0] / 2
+            point_positions[y * depth.shape[1] + x, 1] = y - depth.shape[0] / 2
             point_positions[y * depth.shape[1] + x, 2] = depth[
                 y, x
             ]  # color_coeffs = np.random.uniform(0.4, 1.0, size=(point_positions.shape[0]))
             colors[y * depth.shape[1] + x, :] = (
-                img[:, y, x] * 255
+                img[:, y, x] * 256
             )  # ((80-depth[y,x])/80)**2*np.array([255,0,0])
     point_positions[point_positions == 0] = None
     print(colors.shape)
@@ -206,18 +215,30 @@ def main():
             colors = (
                 np.tile(gui_rgb.value, point_positions.shape[0]).reshape(-1, 3).astype(np.uint8)
             )  # (-1, 3))
-            for y in range(depth.shape[1]):
+
+            for y in range(depth.shape[0]):
+                for x in range(depth.shape[1]):
+                    point_positions[y * depth.shape[1] + x, 0] = x - depth.shape[1] / 2
+                    point_positions[y * depth.shape[1] + x, 1] = y - depth.shape[0] / 2
+                    point_positions[y * depth.shape[1] + x, 2] = depth[
+                        y, x
+                    ]  # color_coeffs = np.random.uniform(0.4, 1.0, size=(point_positions.shape[0]))
+                    colors[y * depth.shape[1] + x, :] = (
+                        img[:, y, x] * 255
+                    )  # ((80-depth[y,x])/80)**2*np.array([255,0,0])
+
+            """ for y in range(depth.shape[1]):
                 for x in range(depth.shape[2]):
                     print(depth.shape)
                     point_positions[y * depth.shape[2] + x, 0] = -1 * (x - depth.shape[2] / 2)
-                    point_positions[y * depth.shape[2] + x, 1] = -y + depth.shape[1] / 2
+                    point_positions[y * depth.shape[2] + x, 1] = y - depth.shape[1] / 2
                     point_positions[
                         y * depth.shape[2] + x, 2
                     ] = 0  # color_coeffs = np.random.uniform(0.4, 1.0, size=(point_positions.shape[0]))
                     colors[y * depth.shape[2] + x, :] = (
                         img[:, y, x] * 255
                     )  # ((80-depth[y,x])/80)**2*np.array([255,0,0])
-
+ """
         clients = server.get_clients()
         # We can set the value of an input to a particular value. Changes are
         # automatically reflected in connected clients.

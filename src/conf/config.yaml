@@ -1,14 +1,14 @@
 in_debug : True
 pdb_disabled: False
 save_images: False
-model_type: "BaseUNet"
-n_models: 1
+loss_function: "MSELoss"
 seed: 442
 eval_garg_crop: True
 eval_eigen_crop: False
+neural_net_param_multiplication_factor: 64
 save_images_path: "/home/jbv415/UncertainDepths/src/models/outputs/"
 hyperparameters:
- learning_rate : 3e-5
+ learning_rate : 3e-4
  batch_size : 8 
 dataset_params:
   data_dir : "/home/jbv415/UncertainDepths/data/external/KITTI/"
@@ -19,3 +19,6 @@ dataset_params:
   input_width: 704
 trainer_args:
   max_epochs: 80
+defaults: 
+ - models: stochastic_unet
+ - _self_

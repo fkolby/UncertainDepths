@@ -1,25 +1,27 @@
+import torchview
+
 import src.utility.train_utils as utils
 from src.utility.debug_utils import debugxshape, shape_and_print_tensor
 
 
 @utils.retry(2)
 def lightning_imports():
-    import pydantic
     import lightning
+    import pydantic
 
     return 0
 
 
 lightning_imports()
+import logging
+import time
+
+import decorator
+import hydra
 import torch
 import torchvision
 from torch import nn
-import time
 from torchinfo import summary
-import decorator
-import hydra
-import logging
-
 
 # log = logging.getLogger(__name__)
 in_debug = True
@@ -115,12 +117,14 @@ class BaseUNet(nn.Module):
 
 
 if __name__ == "__main__":
-    a_based_u_net = BaseUNet(3, 1, in_debug=True)
+    a_based_u_net = BaseUNet(
+        3, 1, in_debug=True, cfg={"dataset_params": {"max_depth": 80, "min_depth": 1e-4}}
+    )
     summary(a_based_u_net, (1, 3, 704, 352))
 
-    from torchview import draw_graph
+    # from torchview import draw_graph
 
-    graph_of_model = draw_graph(a_based_u_net, input_size=(1, 3, 1024, 608))
-    graph_of_model.visual_graph
+    # graph_of_model = draw_graph(a_based_u_net, input_size=(1, 3, 704, 352))
+    # graph_of_model.visual_graph
 
-    graph_of_model.visual_graph.view()
+    # graph_of_model.visual_graph.view()

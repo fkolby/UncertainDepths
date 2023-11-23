@@ -1,5 +1,5 @@
-import torch
 import numpy
+import torch
 import torchvision
 
 
