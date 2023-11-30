@@ -170,15 +170,15 @@ def eval_model(
                 depth = depths[j, :, :, :]
                 
                 if cfg.models.model_type != "stochastic_unet": #then collapse on different predictions.
-                    pred= torch.mean(preds[:, j, :, :, :], dim=0)  # pred is average prediction
+                    pred= torch.mean(preds[:, j, :, :, :], dim=0)  # pred is average prediction, preds ModelxBatchxColorxHxW
 
                     var= (
                         torch.mean(preds[:, j, :, :, :] ** 2, dim=0) - pred**2
                     )  # var is variance over model. since color dimension is 1, it is by pixel.
-                    
+
                 else: #laplace has already collapsed across model dim.
                     pred= preds[j,:,:,:]
-                    depth= depth[j,:,:,:]
+                    var= uncertainty[j,:,:,:]
                 
 
                 
