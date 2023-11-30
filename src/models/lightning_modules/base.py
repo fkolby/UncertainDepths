@@ -1,6 +1,11 @@
 import pytorch_lightning as pl
+import torch
+from torch import optim, nn
+import wandb
+import pdb
 
 from src.utility.viz_utils import log_images, log_loss_metrics
+
 
 class Base_module(pl.LightningModule):
     def __init__(
@@ -9,6 +14,7 @@ class Base_module(pl.LightningModule):
         loss_function,
         steps_per_epoch: int,
         cfg,
+        use_full_size_loss=False
     ):
         super().__init__()
         self.model = model
@@ -22,22 +28,25 @@ class Base_module(pl.LightningModule):
         self.batch_size = cfg.hyperparameters.batch_size
         self.epochs = cfg.trainer_args.max_epochs
         self.steps_per_epoch = steps_per_epoch
+        self.use_full_size_loss = use_full_size_loss
 
     def forward(self, inputs):
-        try:
-            assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
-                x[0, 0, :, :].shape == torch.Size((self.input_height, self.input_width))
-            )
-
-        except:
-            pdb.set_trace()
         return self.model(inputs)
 
     def training_step(self, batch, batch_idx):
         x, y, fullsize_targets = batch
+        
+        try:
+            assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
+                x[0, 0, :, :].shape == torch.Size((self.input_height, self.input_width))
+            )
+        except:
+            pdb.set_trace()
 
         preds = self(x)
+
         print(f"TRAIN:  x: {x.shape} y: {y.shape}, pred: {preds.shape}, tstep: {self.tstep}")
+
         if self.tstep % 10 == 0:
             log_images(
                 img=x[0, :, :, :].detach(),
@@ -57,6 +66,7 @@ class Base_module(pl.LightningModule):
             {"train_loss": loss, "learning_rate": self.lr_schedulers().get_last_lr()[0]},
             step=self.tstep,
         )
+        # Log also full-size version (what we eventually will be evaluated on)
 
         fullsize_mask = torch.logical_and(
             fullsize_targets > self.min_depth, fullsize_targets < self.max_depth
@@ -75,6 +85,8 @@ class Base_module(pl.LightningModule):
             loss_prefix="train_fullsize",
         )
         self.tstep += 1
+        if self.use_full_size_loss:
+            loss=self.loss_function(masked_resized_preds, masked_full_size_targets)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -108,8 +120,9 @@ class Base_module(pl.LightningModule):
             tstep=self.tstep,
             loss_prefix="val",
         )
+        if self.use_full_size_loss:
+            loss=self.loss_function(masked_resized_preds, masked_full_size_targets)
         return loss
-s
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(), lr=self.lr)

@@ -13,7 +13,6 @@ import torch
 from lightning.pytorch import callbacks, loggers
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import callbacks
-from torch import nn, optim
 from torch.nn import MSELoss
 from torchinfo import summary
 from torchvision import transforms
