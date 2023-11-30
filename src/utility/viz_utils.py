@@ -63,6 +63,8 @@ def log_images(img, depth, pred, vmin, vmax, step):
     absdepthdiff = colorize(torch.abs(depth - pred), vmin=vmin, vmax=vmax)
     depth = colorize(depth, vmin=vmin, vmax=vmax)
 
+    img = img.squeeze()
+
     pred = colorize(pred, vmin=vmin, vmax=vmax)
     if step > 5e9:
         print(

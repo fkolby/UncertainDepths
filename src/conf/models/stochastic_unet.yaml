@@ -1,2 +1,2 @@
 model_type: "stochastic_unet"
-n_models: 50
+n_models: 100
