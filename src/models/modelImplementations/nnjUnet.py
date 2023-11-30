@@ -51,7 +51,13 @@ class Shift_Scale(AbstractDiagonalJacobian, nn.Module):
             return None
 
 
-class Dropout(nn.Dropout):
+class Dropout(nn.Dropout2d):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._n_params = 0
+
+
+class InputDropout(nn.Dropout):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._n_params = 0
@@ -81,7 +87,7 @@ class stochastic_unet(torch.nn.Module):
 
         if self.cfg.models.model_type == "Dropout":
             first_downblock = [
-                Dropout(p=self.cfg.models.p_input_dropout),
+                InputDropout(p=self.cfg.models.p_input_dropout),
                 nnj.Conv2d(in_channels, multiplication_factor, 3, stride=1, padding=1),
                 Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Tanh(),
@@ -199,8 +205,8 @@ class stochastic_unet(torch.nn.Module):
                 Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Conv2d(int(in_channels / 2), int(in_channels / 4), 3, stride=1, padding=1),
                 nnj.Tanh(),
-                nnj.Upsample(scale_factor=2),
                 Dropout(p=self.cfg.models.p_hidden_dropout),
+                nnj.Upsample(scale_factor=2),
             ]
         else:
             upblock = [
@@ -220,9 +226,9 @@ class stochastic_unet(torch.nn.Module):
                 nnj.Tanh(),
                 Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Conv2d(in_channels * 2, in_channels, 3, stride=1, padding=1),
-                nnj.Upsample(scale_factor=2),
                 nnj.Tanh(),
                 Dropout(p=self.cfg.models.p_hidden_dropout),
+                nnj.Upsample(scale_factor=2),
             ]
         else:
             midblock = [
@@ -230,8 +236,8 @@ class stochastic_unet(torch.nn.Module):
                 nnj.Conv2d(in_channels, in_channels * 2, 3, stride=1, padding=1),
                 nnj.Tanh(),
                 nnj.Conv2d(in_channels * 2, in_channels, 3, stride=1, padding=1),
-                nnj.Upsample(scale_factor=2),
                 nnj.Tanh(),
+                nnj.Upsample(scale_factor=2),
             ]
         return midblock
 

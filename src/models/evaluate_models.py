@@ -16,7 +16,6 @@ from tqdm import tqdm
 from datetime import datetime
 
 import wandb
-from src.models.predict_model import infer
 from src.utility.debug_utils import time_since_previous_log
 from src.utility.eval_utils import calc_loss_metrics, filter_valid
 from src.utility.other_utils import RunningAverageDict
@@ -102,6 +101,7 @@ def eval_model(
                 print("shapes:", preds.shape, uncertainty.shape)
                 print(uncertainty)
                 print(uncertainty[0, :, :, :])
+                # dimensions: BatchxColorxHxW (no model-dim.)
             case "Ensemble":
                 j = 0
                 preds = torch.zeros(
@@ -133,23 +133,7 @@ def eval_model(
                 )  # dimensions: model, batch, color, height, width.
                 for j in range(cfg.models.n_models):
                     preds[j, :, :, :, :] = torch.unsqueeze(
-                        infer(model, images), dim=0
-                    )  # unsqueeze to have a model-dimension (first)
-
-            case "BaseUNet":
-                preds = torch.zeros(
-                    size=(
-                        cfg.models.n_models,
-                        depths.shape[0],
-                        depths.shape[1],
-                        cfg.dataset_params.input_height,
-                        cfg.dataset_params.input_width,
-                    ),
-                    device=device,
-                )  # dimensions: model, batch, color, height, width.
-                for j in range(cfg.models.n_models):
-                    preds[j, :, :, :, :] = torch.unsqueeze(
-                        infer(model, images), dim=0
+                        model(images), dim=0
                     )  # unsqueeze to have a model-dimension (first)
 
             case "ZoeNK":
@@ -168,7 +152,7 @@ def eval_model(
                     preds[j, :, :, :, :] = torch.unsqueeze(
                         torchvision.transforms.Resize(
                             (cfg.dataset_params.input_height, cfg.dataset_params.input_width)
-                        )(infer(model, images)),
+                        )(model(images)),
                         dim=0,
                     )  # unsqueeze to have a model-dimension (first)
 
@@ -283,7 +267,7 @@ def eval_model(
                 )
 
                 log_images(
-                    img=image.torch.detach(),
+                    img=image.detach(),
                     depth=depth.detach(),
                     pred=pred.detach(),
                     vmin=cfg.dataset_params.min_depth,

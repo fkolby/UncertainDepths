@@ -17,8 +17,7 @@ def colorize(value, vmin=10, vmax=1000, cmap="plasma"):
     # normalize
     print("colorize")
     print(value.shape)
-    if len(value.shape) != 2:
-        value.squeeze()
+    value = value.squeeze()
     if len(value.shape) != 2:
         print(
             "Wrong shape in colorize - shapes should (after squeezing) be 2D. Your shape after squeezing is:",
