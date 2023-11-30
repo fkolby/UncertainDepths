@@ -6,6 +6,7 @@ import torch
 import torchvision
 from torch import Tensor, nn
 from torchinfo import summary
+from omegaconf import OmegaConf
 
 import nnj
 import src.utility.train_utils as utils
@@ -48,10 +49,15 @@ class Shift_Scale(AbstractDiagonalJacobian, nn.Module):
         elif wrt == "weight":
             # non parametric layer has no jacobian with respect to weight
             return None
+        
+class Dropout(nn.Dropout):
+    def __init__(self,*args, **kwargs):
+        super().__init__(*args,**kwargs)
+        self._n_params=0
 
 
 class stochastic_unet(torch.nn.Module):
-    def __init__(self, in_channels, out_channels, cfg=None):
+    def __init__(self, in_channels, out_channels, cfg=None, dropout_version = False):
         super().__init__()
         if cfg:
             multiplication_factor = cfg.neural_net_param_multiplication_factor
@@ -61,24 +67,51 @@ class stochastic_unet(torch.nn.Module):
             self.max_depth = cfg.dataset_params.max_depth
             self.cfg = cfg
         else:
-            multiplication_factor = 64
+            multiplication_factor = 48
             im_height = 352
             im_width = 704
             self.min_depth = 1e-8
             self.max_depth = 80
-        first_downblock = [
-            nnj.Conv2d(in_channels, multiplication_factor, 3, stride=1, padding=1),
-            nnj.Tanh(),
-            nnj.Conv2d(multiplication_factor, multiplication_factor, 3, stride=1, padding=1),
-            nnj.Tanh(),
-        ]
-        last_upblock = [
-            nnj.Conv2d(multiplication_factor * 2, multiplication_factor, 3, stride=1, padding=1),
-            nnj.Tanh(),
-            nnj.Conv2d(int(multiplication_factor), multiplication_factor, 3, stride=1, padding=1),
-            nnj.Tanh(),
-            nnj.Conv2d(multiplication_factor, out_channels, 3, stride=1, padding=1),
-        ]
+            if dropout_version:
+                self.cfg.models.p_dropout = 0.2
+                self.cfg.models.model_type= "Dropout"
+            else:
+                self.cfg.models.model_type= "stochastic_unet"
+        
+        if self.cfg.models.model_type=="Dropout":
+            first_downblock = [
+                Dropout(p=self.cfg.models.p_dropout),
+                nnj.Conv2d(in_channels, multiplication_factor, 3, stride=1, padding=1),
+                Dropout(p=self.cfg.models.p_dropout),
+                nnj.Tanh(),
+                nnj.Conv2d(multiplication_factor, multiplication_factor, 3, stride=1, padding=1),
+                Dropout(p=self.cfg.models.p_dropout),
+                nnj.Tanh(),
+            ]
+            last_upblock = [
+                nnj.Conv2d(multiplication_factor * 2, multiplication_factor, 3, stride=1, padding=1),
+                Dropout(p=self.cfg.models.p_dropout),
+                nnj.Tanh(),
+                nnj.Conv2d(int(multiplication_factor), multiplication_factor, 3, stride=1, padding=1),
+                Dropout(p=self.cfg.models.p_dropout),
+                nnj.Tanh(),
+                nnj.Conv2d(multiplication_factor, out_channels, 3, stride=1, padding=1),
+                Dropout(p=self.cfg.models.p_dropout),
+            ]
+        else:
+            first_downblock = [
+                nnj.Conv2d(in_channels, multiplication_factor, 3, stride=1, padding=1),
+                nnj.Tanh(),
+                nnj.Conv2d(multiplication_factor, multiplication_factor, 3, stride=1, padding=1),
+                nnj.Tanh(),
+            ]
+            last_upblock = [
+                nnj.Conv2d(multiplication_factor * 2, multiplication_factor, 3, stride=1, padding=1),
+                nnj.Tanh(),
+                nnj.Conv2d(int(multiplication_factor), multiplication_factor, 3, stride=1, padding=1),
+                nnj.Tanh(),
+                nnj.Conv2d(multiplication_factor, out_channels, 3, stride=1, padding=1),
+            ]
         downblocks = [
             self.downblock_gen(
                 int(2**i * multiplication_factor), int(im_height / 2**i), int(im_width / 2**i)
@@ -134,10 +167,10 @@ class stochastic_unet(torch.nn.Module):
                 nnj.MaxPool2d(2),
                 nnj.Conv2d(in_channels, in_channels * 2, 3, stride=1, padding=1),
                 nnj.Tanh(),
-                nn.dropout(p=self.cfg.p_dropout),
+                Dropout(p=self.cfg.models.p_dropout),
                 nnj.Conv2d(in_channels * 2, in_channels * 2, 3, stride=1, padding=1),
                 nnj.Tanh(),
-                nn.dropout(p=self.cfg.p_dropout),
+                Dropout(p=self.cfg.models.p_dropout),
             ]
         else:
             downblock = [
@@ -154,11 +187,11 @@ class stochastic_unet(torch.nn.Module):
             upblock = [
                 nnj.Conv2d(in_channels, int(in_channels / 2), 3, stride=1, padding=1),
                 nnj.Tanh(),
-                nn.dropout(p=self.cfg.p_dropout),
+                Dropout(p=self.cfg.models.p_dropout),
                 nnj.Conv2d(int(in_channels / 2), int(in_channels / 4), 3, stride=1, padding=1),
                 nnj.Tanh(),
                 nnj.Upsample(scale_factor=2),
-                nn.dropout(p=self.cfg.p_dropout),
+                Dropout(p=self.cfg.models.p_dropout),
             ]
         else:
             upblock = [
@@ -171,14 +204,26 @@ class stochastic_unet(torch.nn.Module):
         return upblock
 
     def middleblock_gen(self, in_channels, im_height, im_width):
-        midblock = [
-            nnj.MaxPool2d(2),
-            nnj.Conv2d(in_channels, in_channels * 2, 3, stride=1, padding=1),
-            nnj.Tanh(),
-            nnj.Conv2d(in_channels * 2, in_channels, 3, stride=1, padding=1),
-            nnj.Upsample(scale_factor=2),
-            nnj.Tanh(),
-        ]
+        if self.cfg.models.model_type =="Dropout":
+            midblock = [
+                nnj.MaxPool2d(2),
+                nnj.Conv2d(in_channels, in_channels * 2, 3, stride=1, padding=1),
+                nnj.Tanh(),
+                Dropout(p=self.cfg.models.p_dropout),
+                nnj.Conv2d(in_channels * 2, in_channels, 3, stride=1, padding=1),
+                nnj.Upsample(scale_factor=2),
+                nnj.Tanh(),
+                Dropout(p=self.cfg.models.p_dropout),
+            ]
+        else:
+            midblock = [
+                nnj.MaxPool2d(2),
+                nnj.Conv2d(in_channels, in_channels * 2, 3, stride=1, padding=1),
+                nnj.Tanh(),
+                nnj.Conv2d(in_channels * 2, in_channels, 3, stride=1, padding=1),
+                nnj.Upsample(scale_factor=2),
+                nnj.Tanh(),
+            ]
         return midblock
 
     def forward(self, x):
@@ -187,14 +232,24 @@ class stochastic_unet(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    u_net = stochastic_unet(in_channels=3, out_channels=1)
+    #u_net = stochastic_unet(in_channels=3, out_channels=1)
+    print("GPU: ", torch.cuda.is_available())
+    print("nGPUs:", torch.cuda.device_count())
+    print("CurrDevice:", torch.cuda.current_device())
+    print("Device name: ", torch.cuda.get_device_name(0))
+    print(torch.cuda.memory_summary())
+    cfg = OmegaConf.create({"neural_net_param_multiplication_factor":96,
+            "dataset_params": {"input_height":352,"input_width":704, "min_depth": 1e-4, "max_depth": 80,},
+                               "models":{"model_type":"Dropout","p_dropout":0.2}})
+    u_net = stochastic_unet(in_channels=3, out_channels=1,cfg=cfg)
+    #u_net.to(device="cuda")
     print(u_net.stochastic_net)
-    multiplication_factor = 32
-    im_height = 352
-    im_width = 704
-    summary(u_net, (1, 3, 352, 704), depth=300)
-    print(torch.max(u_net(torch.rand((8, 3, 352, 704)))))
-    print(torch.min(u_net(torch.rand((8, 3, 352, 704)))))
+    t = torch.rand((8,3,352,704),device="cuda")
+    summary(u_net, (8, 3, 352, 704), depth=300)
+    a = u_net(t)
+
+    print(torch.max(u_net(t)))
+    print(torch.min(u_net(t)))
 
 #    from torchview import draw_graph
 

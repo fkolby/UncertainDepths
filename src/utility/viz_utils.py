@@ -15,6 +15,13 @@ from src.utility.debug_utils import time_since_previous_log
 ## function found from ADABINS (https://github.com/shariqfarooq123/AdaBins/blob/main/utils.pdepth)
 def colorize(value, vmin=10, vmax=1000, cmap="plasma"):
     # normalize
+    print("colorize")
+    print(value.shape)
+    if len(value.shape)!=2:
+        value.squeeze()
+    if len(value.shape) != 2:
+        print("Wrong shape in colorize - shapes should (after squeezing) be 2D. Your shape after squeezing is:", value.shape, flush=True)
+        raise NotImplementedError
     value = value.cpu()
     vmin = value.min() if vmin is None else vmin
     vmax = value.max() if vmax is None else vmax
@@ -31,6 +38,7 @@ def colorize(value, vmin=10, vmax=1000, cmap="plasma"):
 
     img = value[:, :, :3]  # :3]
     #     return img.transpose((2, 0, 1))
+    print(img.shape)
     return img
 
 

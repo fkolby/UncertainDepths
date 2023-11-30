@@ -1,0 +1,2 @@
+model_type: "Ensemble"
+n_models: 5
