@@ -18,7 +18,7 @@ dataset_params:
   input_height: 352
   input_width: 704
 trainer_args:
-  max_epochs: 1
+  max_epochs: 25
   
 defaults: 
  - models: stochastic_unet

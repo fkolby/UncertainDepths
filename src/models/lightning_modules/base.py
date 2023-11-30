@@ -21,7 +21,10 @@ class Base_module(pl.LightningModule):
         self.batch_size = cfg.hyperparameters.batch_size
         self.epochs = cfg.trainer_args.max_epochs
         self.steps_per_epoch = steps_per_epoch
-        self.use_full_size_loss = use_full_size_loss
+        try: #set it if it is in struct
+            self.use_full_size_loss = cfg.dataset_params.use_full_size_loss
+        except:
+            self.use_full_size_loss = False
 
     def forward(self, inputs):
         return self.model(inputs)
