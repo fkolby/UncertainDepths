@@ -2,7 +2,8 @@ import torchview
 
 import src.utility.train_utils as utils
 from src.utility.debug_utils import debugxshape, shape_and_print_tensor
-from omegaconf import OmegaConf 
+from omegaconf import OmegaConf
+
 
 @utils.retry(2)
 def lightning_imports():
@@ -118,9 +119,7 @@ class BaseUNet(nn.Module):
 
 if __name__ == "__main__":
     cfg = OmegaConf.create({"dataset_params": {"max_depth": 80, "min_depth": 1e-4}})
-    a_based_u_net = BaseUNet(
-        3, 1, in_debug=True, cfg=cfg
-    )
+    a_based_u_net = BaseUNet(3, 1, in_debug=True, cfg=cfg)
     summary(a_based_u_net, (8, 3, 704, 352))
 
     # from torchview import draw_graph

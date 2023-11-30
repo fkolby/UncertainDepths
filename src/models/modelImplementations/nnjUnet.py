@@ -49,15 +49,16 @@ class Shift_Scale(AbstractDiagonalJacobian, nn.Module):
         elif wrt == "weight":
             # non parametric layer has no jacobian with respect to weight
             return None
-        
+
+
 class Dropout(nn.Dropout):
-    def __init__(self,*args, **kwargs):
-        super().__init__(*args,**kwargs)
-        self._n_params=0
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._n_params = 0
 
 
 class stochastic_unet(torch.nn.Module):
-    def __init__(self, in_channels, out_channels, cfg=None, dropout_version = False):
+    def __init__(self, in_channels, out_channels, cfg=None, dropout_version=False):
         super().__init__()
         if cfg:
             multiplication_factor = cfg.neural_net_param_multiplication_factor
@@ -74,11 +75,11 @@ class stochastic_unet(torch.nn.Module):
             self.max_depth = 80
             if dropout_version:
                 self.cfg.models.p_hidden_dropout = 0.2
-                self.cfg.models.model_type= "Dropout"
+                self.cfg.models.model_type = "Dropout"
             else:
-                self.cfg.models.model_type= "stochastic_unet"
-        
-        if self.cfg.models.model_type=="Dropout":
+                self.cfg.models.model_type = "stochastic_unet"
+
+        if self.cfg.models.model_type == "Dropout":
             first_downblock = [
                 Dropout(p=self.cfg.models.p_input_dropout),
                 nnj.Conv2d(in_channels, multiplication_factor, 3, stride=1, padding=1),
@@ -89,10 +90,14 @@ class stochastic_unet(torch.nn.Module):
                 nnj.Tanh(),
             ]
             last_upblock = [
-                nnj.Conv2d(multiplication_factor * 2, multiplication_factor, 3, stride=1, padding=1),
+                nnj.Conv2d(
+                    multiplication_factor * 2, multiplication_factor, 3, stride=1, padding=1
+                ),
                 Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Tanh(),
-                nnj.Conv2d(int(multiplication_factor), multiplication_factor, 3, stride=1, padding=1),
+                nnj.Conv2d(
+                    int(multiplication_factor), multiplication_factor, 3, stride=1, padding=1
+                ),
                 Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Tanh(),
                 nnj.Conv2d(multiplication_factor, out_channels, 3, stride=1, padding=1),
@@ -106,9 +111,13 @@ class stochastic_unet(torch.nn.Module):
                 nnj.Tanh(),
             ]
             last_upblock = [
-                nnj.Conv2d(multiplication_factor * 2, multiplication_factor, 3, stride=1, padding=1),
+                nnj.Conv2d(
+                    multiplication_factor * 2, multiplication_factor, 3, stride=1, padding=1
+                ),
                 nnj.Tanh(),
-                nnj.Conv2d(int(multiplication_factor), multiplication_factor, 3, stride=1, padding=1),
+                nnj.Conv2d(
+                    int(multiplication_factor), multiplication_factor, 3, stride=1, padding=1
+                ),
                 nnj.Tanh(),
                 nnj.Conv2d(multiplication_factor, out_channels, 3, stride=1, padding=1),
             ]
@@ -204,7 +213,7 @@ class stochastic_unet(torch.nn.Module):
         return upblock
 
     def middleblock_gen(self, in_channels, im_height, im_width):
-        if self.cfg.models.model_type =="Dropout":
+        if self.cfg.models.model_type == "Dropout":
             midblock = [
                 nnj.MaxPool2d(2),
                 nnj.Conv2d(in_channels, in_channels * 2, 3, stride=1, padding=1),
@@ -232,19 +241,28 @@ class stochastic_unet(torch.nn.Module):
 
 
 if __name__ == "__main__":
-    #u_net = stochastic_unet(in_channels=3, out_channels=1)
+    # u_net = stochastic_unet(in_channels=3, out_channels=1)
     print("GPU: ", torch.cuda.is_available())
     print("nGPUs:", torch.cuda.device_count())
     print("CurrDevice:", torch.cuda.current_device())
     print("Device name: ", torch.cuda.get_device_name(0))
     print(torch.cuda.memory_summary())
-    cfg = OmegaConf.create({"neural_net_param_multiplication_factor":96,
-            "dataset_params": {"input_height":352,"input_width":704, "min_depth": 1e-4, "max_depth": 80,},
-                               "models":{"model_type":"Dropout","p_hidden_dropout":0.5, "p_input_dropout":0.2}})
-    u_net = stochastic_unet(in_channels=3, out_channels=1,cfg=cfg)
-    #u_net.to(device="cuda")
+    cfg = OmegaConf.create(
+        {
+            "neural_net_param_multiplication_factor": 96,
+            "dataset_params": {
+                "input_height": 352,
+                "input_width": 704,
+                "min_depth": 1e-4,
+                "max_depth": 80,
+            },
+            "models": {"model_type": "Dropout", "p_hidden_dropout": 0.5, "p_input_dropout": 0.2},
+        }
+    )
+    u_net = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
+    # u_net.to(device="cuda")
     print(u_net.stochastic_net)
-    t = torch.rand((8,3,352,704),device="cuda")
+    t = torch.rand((8, 3, 352, 704), device="cuda")
     summary(u_net, (8, 3, 352, 704), depth=300)
     a = u_net(t)
 

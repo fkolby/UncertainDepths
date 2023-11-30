@@ -202,7 +202,7 @@ def main(cfg: DictConfig):
             transforms.Lambda(lambda x: x / 256),  # 256 as per devkit
         ]
     )
-    
+
     if (
         cfg.models.model_type != "Ensemble"
     ):  # if ensemble we need to seed - and therefore instantiate dataloaders seperately (they should have different seed for every model)( Zoe does not use a training set)
@@ -216,7 +216,6 @@ def main(cfg: DictConfig):
             input_width=cfg.dataset_params.input_width,
         )
         datamodule.setup(stage="fit")
-
 
     if cfg.models.model_type == "ZoeNK":
         # no normalization, just straight up load in. (apart from center-crop and randomcrop)
@@ -233,8 +232,8 @@ def main(cfg: DictConfig):
             pytorch_lightning_in_use=False,  # KEY ARGUMENT HERE FOR SPEED.
         )
         datamoduleEval.setup(stage="fit")
-     
-    elif cfg.models.model_type== "Ensemble":
+
+    elif cfg.models.model_type == "Ensemble":
         seed_everything(cfg.seed)
         # Zoe does not want normalization (does it internally), Ensemble needs new seed for each run
         datamoduleEval = KITTIDataModule(
@@ -250,7 +249,7 @@ def main(cfg: DictConfig):
 
         datamoduleEval.setup(stage="fit")
     else:
-      # Zoe does not want normalization (does it internally), Ensemble needs new seed for each run
+        # Zoe does not want normalization (does it internally), Ensemble needs new seed for each run
         datamoduleEval = KITTIDataModule(
             data_dir=cfg.dataset_params.data_dir,
             batch_size=cfg.hyperparameters.batch_size,
@@ -263,7 +262,6 @@ def main(cfg: DictConfig):
         )
 
         datamoduleEval.setup(stage="fit")
-    
 
     # ================================ SET LOSS FUNC ======================================================
 
@@ -306,8 +304,7 @@ def main(cfg: DictConfig):
                 eval_model(
                     model=model,
                     test_loader=datamoduleEval.val_dataloader(),
-                    dataloader_for_hessian=datamodule.train_dataloader(),  
-                    test_data_img_nums=len(datamoduleEval.KITTI_val_set),
+                    dataloader_for_hessian=datamodule.train_dataloader(),
                     cfg=cfg,
                 )
             )
@@ -327,7 +324,7 @@ def main(cfg: DictConfig):
                     input_width=cfg.dataset_params.input_width,
                 )
                 datamodule.setup(stage="fit")
-                
+
                 neuralnet = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
 
                 summary(neuralnet, (1, 3, 352, 704), depth=300)
@@ -352,8 +349,10 @@ def main(cfg: DictConfig):
                     model._modules["model"].state_dict(),
                     f"{cfg.models.model_type}_{i}.pt",
                 )
-            
-            seed_everything(seed=cfg.seed) # seed to same, so first pictures match (and thus example pictures for showing variance are similar)
+
+            seed_everything(
+                seed=cfg.seed
+            )  # seed to same, so first pictures match (and thus example pictures for showing variance are similar)
             model = stochastic_unet(
                 in_channels=3, out_channels=1, cfg=cfg
             )  # just loading it in, to have something to passe to eval_model function. this specific model gets overwritten in eval_model.
@@ -366,12 +365,11 @@ def main(cfg: DictConfig):
                 eval_model(
                     model=model,
                     test_loader=datamoduleEval.val_dataloader(),
-                    dataloader_for_hessian=datamodule.val_dataloader(),  # when in actual (final) test, we should do val_loader here, but test_loader for test_loader.
                     cfg=cfg,
                 )
             )
-        
-        case "Dropout": #main difference to laplace posthoc is the fact that we do not put module into eval mode.
+
+        case "Dropout":  # main difference to laplace posthoc is the fact that we do not put module into eval mode.
             neuralnet = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
             summary(neuralnet, (1, 3, 352, 704), depth=300)
 
@@ -403,8 +401,6 @@ def main(cfg: DictConfig):
                 eval_model(
                     model=model,
                     test_loader=datamoduleEval.val_dataloader(),
-                    dataloader_for_hessian=datamodule.train_dataloader(),  
-                    test_data_img_nums=len(datamoduleEval.KITTI_val_set),
                     cfg=cfg,
                 )
             )

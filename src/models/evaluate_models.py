@@ -37,8 +37,10 @@ def eval_model(
         device = "cuda"
     else:
         device = "cpu"
-    
-    date_and_time_and_model = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")+"_"+cfg.models.model_type
+
+    date_and_time_and_model = (
+        datetime.now().strftime("%d_%m_%Y_%H_%M_%S") + "_" + cfg.models.model_type
+    )
     i = 0
     if cfg.models.model_type == "stochastic_unet":
         hessian_calculator = MSEHessianCalculator(
@@ -60,13 +62,15 @@ def eval_model(
                 break
 
         print("Done calcing hessian")
-        mean_parameter = torch.nn.utils.parameters_to_vector(
-            model.parameters()
-        )
+        mean_parameter = torch.nn.utils.parameters_to_vector(model.parameters())
         with torch.enable_grad():
-            prior_precision=optimize_prior_precision(mu_q=mean_parameter, hessian=hessian, prior_prec=torch.tensor([1.],device=device),n_steps=500)
+            prior_precision = optimize_prior_precision(
+                mu_q=mean_parameter,
+                hessian=hessian,
+                prior_prec=torch.tensor([1.0], device=device),
+                n_steps=500,
+            )
         print(f"prior precision: {prior_precision}")
-
 
     # ======================================================   PREDICTING  ===============================================
 
@@ -75,7 +79,7 @@ def eval_model(
     uncertainty_all_samples = torch.Tensor().to(device)
 
     for i, sample in enumerate(tqdm(test_loader, total=len(test_loader))):
-        if i > 50 and cfg.in_debug: # skip if too long.
+        if i > 50 and cfg.in_debug:  # skip if too long.
             continue
 
         if "has_valid_depth" in sample:
@@ -88,11 +92,17 @@ def eval_model(
 
         match cfg.models.model_type:
             case "stochastic_unet":
-                preds, uncertainty = laplace.laplace(x = images, model=model, hessian=hessian, prior_prec=prior_precision, n_samples=cfg.models.n_models) ###NOTE TO SELF: MUST BE NON-flipped for other models as well
+                preds, uncertainty = laplace.laplace(
+                    x=images,
+                    model=model,
+                    hessian=hessian,
+                    prior_prec=prior_precision,
+                    n_samples=cfg.models.n_models,
+                )  ###NOTE TO SELF: MUST BE NON-flipped for other models as well
                 print("shapes:", preds.shape, uncertainty.shape)
                 print(uncertainty)
-                print(uncertainty[0,:,:,:])
-            case "Ensemble":  
+                print(uncertainty[0, :, :, :])
+            case "Ensemble":
                 j = 0
                 preds = torch.zeros(
                     size=(
@@ -168,23 +178,26 @@ def eval_model(
             for j in range(min(images.shape[0], 6)):
                 image = images[j, :, :, :]
                 depth = depths[j, :, :, :]
-                
-                if cfg.models.model_type != "stochastic_unet": #then collapse on different predictions.
-                    pred= torch.mean(preds[:, j, :, :, :], dim=0)  # pred is average prediction, preds ModelxBatchxColorxHxW
 
-                    var= (
+                if (
+                    cfg.models.model_type != "stochastic_unet"
+                ):  # then collapse on different predictions.
+                    pred = torch.mean(
+                        preds[:, j, :, :, :], dim=0
+                    )  # pred is average prediction, preds ModelxBatchxColorxHxW
+
+                    var = (
                         torch.mean(preds[:, j, :, :, :] ** 2, dim=0) - pred**2
                     )  # var is variance over model. since color dimension is 1, it is by pixel.
 
-                else: #laplace has already collapsed across model dim.
-                    pred= preds[j,:,:,:]
-                    var= uncertainty[j,:,:,:]
-                
+                else:  # laplace has already collapsed across model dim.
+                    pred = preds[j, :, :, :]
+                    var = uncertainty[j, :, :, :]
 
-                
-                
-
-                os.makedirs(os.path.join(cfg.save_images_path, "images/", date_and_time_and_model), exist_ok=True)
+                os.makedirs(
+                    os.path.join(cfg.save_images_path, "images/", date_and_time_and_model),
+                    exist_ok=True,
+                )
                 d = torch.tensor(
                     np.transpose(colorize(torch.squeeze(depth, dim=0), 0, 80), (2, 0, 1))
                 )
@@ -192,7 +205,9 @@ def eval_model(
                     np.transpose(colorize(torch.squeeze(pred, dim=0), 0, 80), (2, 0, 1))
                 )
                 v = torch.tensor(
-                    np.transpose(colorize(torch.squeeze(var, dim=0),None, None), (2, 0, 1)) #None,None = v.min(), v.max() for color range
+                    np.transpose(
+                        colorize(torch.squeeze(var, dim=0), None, None), (2, 0, 1)
+                    )  # None,None = v.min(), v.max() for color range
                 )
                 if cfg.models.model_type == "ZoeNK":
                     im = transforms.ToPILImage()(
@@ -202,69 +217,97 @@ def eval_model(
                     im = transforms.ToPILImage()(denormalize(image).cpu())
                 print(type(d))
 
-
                 # --------------------------------------  LOG AND SAVE  ---------------------------------------------------------------------------------
                 im.save(
-                    os.path.join(cfg.save_images_path, "images/", date_and_time_and_model, f"{j}_{cfg.models.model_type}_img.png")
+                    os.path.join(
+                        cfg.save_images_path,
+                        "images/",
+                        date_and_time_and_model,
+                        f"{j}_{cfg.models.model_type}_img.png",
+                    )
                 )
-                
+
                 print(d.shape, p.shape, image.shape, pred.shape, depth.shape)
 
                 transforms.ToPILImage()(d).save(
-                    os.path.join(cfg.save_images_path, "images/", date_and_time_and_model, f"{j}_{cfg.models.model_type}_depth.png")
+                    os.path.join(
+                        cfg.save_images_path,
+                        "images/",
+                        date_and_time_and_model,
+                        f"{j}_{cfg.models.model_type}_depth.png",
+                    )
                 )
                 transforms.ToPILImage()(p).save(
-                    os.path.join(cfg.save_images_path, "images/", date_and_time_and_model, f"{j}_{cfg.models.model_type}_pred.png")
+                    os.path.join(
+                        cfg.save_images_path,
+                        "images/",
+                        date_and_time_and_model,
+                        f"{j}_{cfg.models.model_type}_pred.png",
+                    )
                 )
                 transforms.ToPILImage()(v).save(
-                    os.path.join(cfg.save_images_path, "images/", date_and_time_and_model, f"{j}_{cfg.models.model_type}_var.png")
+                    os.path.join(
+                        cfg.save_images_path,
+                        "images/",
+                        date_and_time_and_model,
+                        f"{j}_{cfg.models.model_type}_var.png",
+                    )
                 )
 
                 np.save(
                     os.path.join(
-                        cfg.save_images_path, "images/", date_and_time_and_model, f"np_img_{cfg.models.model_type}_{j}.npy"
+                        cfg.save_images_path,
+                        "images/",
+                        date_and_time_and_model,
+                        f"np_img_{cfg.models.model_type}_{j}.npy",
                     ),
                     torch.squeeze(denormalize(image), dim=0).numpy(force=True),
                 )
                 np.save(
                     os.path.join(
-                        cfg.save_images_path, "images/", date_and_time_and_model, f"np_depth_{cfg.models.model_type}_{j}.npy"
+                        cfg.save_images_path,
+                        "images/",
+                        date_and_time_and_model,
+                        f"np_depth_{cfg.models.model_type}_{j}.npy",
                     ),
                     torch.squeeze(depth, dim=0).numpy(force=True),
                 )
                 np.save(
                     os.path.join(
-                        cfg.save_images_path, "images/", date_and_time_and_model, f"np_preds_{cfg.models.model_type}_{j}.npy"
+                        cfg.save_images_path,
+                        "images/",
+                        date_and_time_and_model,
+                        f"np_preds_{cfg.models.model_type}_{j}.npy",
                     ),
                     torch.squeeze(pred, dim=0).numpy(force=True),
                 )
-            
+
                 log_images(
                     img=image.torch.detach(),
                     depth=depth.detach(),
                     pred=pred.detach(),
                     vmin=cfg.dataset_params.min_depth,
                     vmax=cfg.dataset_params.max_depth,
-                    step=(j+1) * 5000000,
+                    step=(j + 1) * 5000000,
                 )
 
-        if cfg.models.model_type != "stochastic_unet": #then collapse on different predictions by each model.
-            pred = torch.mean(preds, dim=0)  
+        if (
+            cfg.models.model_type != "stochastic_unet"
+        ):  # then collapse on different predictions by each model.
+            pred = torch.mean(preds, dim=0)
 
             uncertainty = torch.var(preds, dim=0)
         else:
-            pred = preds #only named preds for consistency with other models - naming here might be worth rewriting. 
-            #uncertainty already=uncertainty
+            pred = preds  # only named preds for consistency with other models - naming here might be worth rewriting.
+            # uncertainty already=uncertainty
 
-        depths, pred, uncertainty = filter_valid(
-            depths, pred, uncertainty=uncertainty, config=cfg
-        )
+        depths, pred, uncertainty = filter_valid(depths, pred, uncertainty=uncertainty, config=cfg)
         depths.to(device)
         pred.to(device)
         uncertainty.to(device)
         print(depths.device, depths_all_samples.device)
-        print(depths_all_samples.shape,uncertainty_all_samples.shape,preds_all_samples.shape)
-        print(depths.shape,uncertainty.shape,pred.shape)
+        print(depths_all_samples.shape, uncertainty_all_samples.shape, preds_all_samples.shape)
+        print(depths.shape, uncertainty.shape, pred.shape)
 
         depths_all_samples = torch.cat(
             [depths_all_samples, torch.flatten(depths).to(device)]
@@ -285,14 +328,18 @@ def eval_model(
 
     def uncertainty_results_df(fineness, sorted_preds, sorted_targets):
         df = pd.DataFrame(
-            columns=["Share"] + [el for el in calc_loss_metrics(sorted_preds, sorted_targets).keys()]
+            columns=["Share"]
+            + [el for el in calc_loss_metrics(sorted_preds, sorted_targets).keys()]
         )
         for i in range(fineness):  # increment in thousandths
             print(f"{i} of {fineness}", flush=True)
             df.loc[i] = [i / fineness] + [
                 el.numpy(force=True)
                 for el in calc_loss_metrics(
-                    sorted_preds[int(i/fineness*len(sorted_preds)) :], sorted_targets[int(i/fineness*len(sorted_preds)) :] #sorted_preds/targets should be same length.
+                    sorted_preds[int(i / fineness * len(sorted_preds)) :],
+                    sorted_targets[
+                        int(i / fineness * len(sorted_preds)) :
+                    ],  # sorted_preds/targets should be same length.
                 ).values()
             ]
         return df
@@ -314,17 +361,30 @@ def eval_model(
                 plt.savefig(fname=file_prefix + c)
                 plt.clf()
 
-    os.makedirs(os.path.join(cfg.save_images_path, "uncertainty_df/", date_and_time_and_model), exist_ok=True)
-    os.makedirs(os.path.join(cfg.save_images_path, "plots/", date_and_time_and_model), exist_ok=True)
+    os.makedirs(
+        os.path.join(cfg.save_images_path, "uncertainty_df/", date_and_time_and_model),
+        exist_ok=True,
+    )
+    os.makedirs(
+        os.path.join(cfg.save_images_path, "plots/", date_and_time_and_model), exist_ok=True
+    )
     uncertainty_df.to_csv(
         os.path.join(
-            cfg.save_images_path, "uncertainty_df/", date_and_time_and_model, f"uncertainty_df_{cfg.models.model_type}"
+            cfg.save_images_path,
+            "uncertainty_df/",
+            date_and_time_and_model,
+            f"uncertainty_df_{cfg.models.model_type}",
         ),
         index=False,
     )
     save_uncertainty_plots(
         uncertainty_df,
-        os.path.join(cfg.save_images_path, "plots/", date_and_time_and_model, f"plot_{cfg.models.model_type}_"),
+        os.path.join(
+            cfg.save_images_path,
+            "plots/",
+            date_and_time_and_model,
+            f"plot_{cfg.models.model_type}_",
+        ),
     )
     print("Updating metrics")
     metrics.update(losses)
