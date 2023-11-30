@@ -8,14 +8,7 @@ from src.utility.viz_utils import log_images, log_loss_metrics
 
 
 class Base_module(pl.LightningModule):
-    def __init__(
-        self,
-        model,
-        loss_function,
-        steps_per_epoch: int,
-        cfg,
-        use_full_size_loss=False
-    ):
+    def __init__(self, model, loss_function, steps_per_epoch: int, cfg, use_full_size_loss=False):
         super().__init__()
         self.model = model
         self.loss_function = loss_function
@@ -35,7 +28,7 @@ class Base_module(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y, fullsize_targets = batch
-        
+
         try:
             assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
                 x[0, 0, :, :].shape == torch.Size((self.input_height, self.input_width))
@@ -86,7 +79,7 @@ class Base_module(pl.LightningModule):
         )
         self.tstep += 1
         if self.use_full_size_loss:
-            loss=self.loss_function(masked_resized_preds, masked_full_size_targets)
+            loss = self.loss_function(masked_resized_preds, masked_full_size_targets)
         return loss
 
     def validation_step(self, batch, batch_idx):
@@ -121,7 +114,7 @@ class Base_module(pl.LightningModule):
             loss_prefix="val",
         )
         if self.use_full_size_loss:
-            loss=self.loss_function(masked_resized_preds, masked_full_size_targets)
+            loss = self.loss_function(masked_resized_preds, masked_full_size_targets)
         return loss
 
     def configure_optimizers(self):
@@ -134,4 +127,3 @@ class Base_module(pl.LightningModule):
             "optimizer": optimizer,
         }
         return opt_dict
-
