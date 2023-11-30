@@ -73,30 +73,30 @@ class stochastic_unet(torch.nn.Module):
             self.min_depth = 1e-8
             self.max_depth = 80
             if dropout_version:
-                self.cfg.models.p_dropout = 0.2
+                self.cfg.models.p_hidden_dropout = 0.2
                 self.cfg.models.model_type= "Dropout"
             else:
                 self.cfg.models.model_type= "stochastic_unet"
         
         if self.cfg.models.model_type=="Dropout":
             first_downblock = [
-                Dropout(p=self.cfg.models.p_dropout),
+                Dropout(p=self.cfg.models.p_input_dropout),
                 nnj.Conv2d(in_channels, multiplication_factor, 3, stride=1, padding=1),
-                Dropout(p=self.cfg.models.p_dropout),
+                Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Tanh(),
                 nnj.Conv2d(multiplication_factor, multiplication_factor, 3, stride=1, padding=1),
-                Dropout(p=self.cfg.models.p_dropout),
+                Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Tanh(),
             ]
             last_upblock = [
                 nnj.Conv2d(multiplication_factor * 2, multiplication_factor, 3, stride=1, padding=1),
-                Dropout(p=self.cfg.models.p_dropout),
+                Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Tanh(),
                 nnj.Conv2d(int(multiplication_factor), multiplication_factor, 3, stride=1, padding=1),
-                Dropout(p=self.cfg.models.p_dropout),
+                Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Tanh(),
                 nnj.Conv2d(multiplication_factor, out_channels, 3, stride=1, padding=1),
-                Dropout(p=self.cfg.models.p_dropout),
+                Dropout(p=self.cfg.models.p_hidden_dropout),
             ]
         else:
             first_downblock = [
@@ -167,10 +167,10 @@ class stochastic_unet(torch.nn.Module):
                 nnj.MaxPool2d(2),
                 nnj.Conv2d(in_channels, in_channels * 2, 3, stride=1, padding=1),
                 nnj.Tanh(),
-                Dropout(p=self.cfg.models.p_dropout),
+                Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Conv2d(in_channels * 2, in_channels * 2, 3, stride=1, padding=1),
                 nnj.Tanh(),
-                Dropout(p=self.cfg.models.p_dropout),
+                Dropout(p=self.cfg.models.p_hidden_dropout),
             ]
         else:
             downblock = [
@@ -187,11 +187,11 @@ class stochastic_unet(torch.nn.Module):
             upblock = [
                 nnj.Conv2d(in_channels, int(in_channels / 2), 3, stride=1, padding=1),
                 nnj.Tanh(),
-                Dropout(p=self.cfg.models.p_dropout),
+                Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Conv2d(int(in_channels / 2), int(in_channels / 4), 3, stride=1, padding=1),
                 nnj.Tanh(),
                 nnj.Upsample(scale_factor=2),
-                Dropout(p=self.cfg.models.p_dropout),
+                Dropout(p=self.cfg.models.p_hidden_dropout),
             ]
         else:
             upblock = [
@@ -209,11 +209,11 @@ class stochastic_unet(torch.nn.Module):
                 nnj.MaxPool2d(2),
                 nnj.Conv2d(in_channels, in_channels * 2, 3, stride=1, padding=1),
                 nnj.Tanh(),
-                Dropout(p=self.cfg.models.p_dropout),
+                Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Conv2d(in_channels * 2, in_channels, 3, stride=1, padding=1),
                 nnj.Upsample(scale_factor=2),
                 nnj.Tanh(),
-                Dropout(p=self.cfg.models.p_dropout),
+                Dropout(p=self.cfg.models.p_hidden_dropout),
             ]
         else:
             midblock = [
@@ -240,7 +240,7 @@ if __name__ == "__main__":
     print(torch.cuda.memory_summary())
     cfg = OmegaConf.create({"neural_net_param_multiplication_factor":96,
             "dataset_params": {"input_height":352,"input_width":704, "min_depth": 1e-4, "max_depth": 80,},
-                               "models":{"model_type":"Dropout","p_dropout":0.2}})
+                               "models":{"model_type":"Dropout","p_hidden_dropout":0.5, "p_input_dropout":0.2}})
     u_net = stochastic_unet(in_channels=3, out_channels=1,cfg=cfg)
     #u_net.to(device="cuda")
     print(u_net.stochastic_net)

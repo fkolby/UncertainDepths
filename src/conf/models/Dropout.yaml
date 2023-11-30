@@ -1,0 +1,4 @@
+model_type: "Dropout"
+p_hidden_dropout: 0.5
+p_input_dropout: 0.2
+n_models: 100
