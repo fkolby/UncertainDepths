@@ -30,7 +30,7 @@ class Base_module(pl.LightningModule):
         return self.model(inputs)
 
     def training_step(self, batch, batch_idx):
-        x, y, fullsize_targets = batch
+        x, y = batch
 
         try:
             assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
@@ -43,7 +43,7 @@ class Base_module(pl.LightningModule):
 
         print(f"TRAIN:  x: {x.shape} y: {y.shape}, pred: {preds.shape}, tstep: {self.tstep}")
 
-        if self.tstep % 10 == 0:
+        if self.tstep % 1000 == 0 or (self.step < 1000 and self.tstep % 100 ==0): #dont log every single image (space issues. (space issues.)
             log_images(
                 img=x[0, :, :, :].detach(),
                 depth=y[0, :, :, :].detach(),
@@ -64,60 +64,37 @@ class Base_module(pl.LightningModule):
         )
         # Log also full-size version (what we eventually will be evaluated on)
 
-        fullsize_mask = torch.logical_and(
-            fullsize_targets > self.min_depth, fullsize_targets < self.max_depth
-        )
-
-        masked_full_size_targets = fullsize_targets[fullsize_mask]
-
-        resized_preds = nn.functional.interpolate(
-            preds, fullsize_targets.shape[-2:], mode="bilinear", align_corners=True
-        )
-        masked_resized_preds = resized_preds[fullsize_mask]
         log_loss_metrics(
-            preds=masked_resized_preds.detach(),
-            targets=masked_full_size_targets.detach(),
+            preds=x.detach(),
+            targets=y.detach(),
             tstep=self.tstep,
             loss_prefix="train_fullsize",
         )
         self.tstep += 1
-        if self.use_full_size_loss:
-            loss = self.loss_function(masked_resized_preds, masked_full_size_targets)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, y, fullsize_targets = batch
+        x, y = batch
 
         assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
             x[0, 0, :, :].shape == torch.Size((self.input_height, self.input_width))
         )
         preds = self(x)
         print(f"VALIDATION: x: {x.shape} y: {y.shape}, pred: {preds.shape}")
+
         mask = torch.logical_and(y > self.min_depth, y < self.max_depth)
         loss = self.loss_function(preds * mask, y * mask)
 
         wandb.log({"val_loss": loss}, step=self.tstep)
         self.log("validation_loss", loss)
 
-        fullsize_mask = torch.logical_and(
-            fullsize_targets > self.min_depth, fullsize_targets < self.max_depth
-        )
 
-        masked_full_size_targets = fullsize_targets[fullsize_mask]
-
-        resized_preds = nn.functional.interpolate(
-            preds, fullsize_targets.shape[-2:], mode="bilinear", align_corners=True
-        )
-
-        masked_resized_preds = resized_preds[fullsize_mask]
         log_loss_metrics(
-            preds=masked_resized_preds.detach(),
-            targets=masked_full_size_targets.detach(),
+            preds=x.detach(),
+            targets=y.detach(),
             tstep=self.tstep,
             loss_prefix="val",
         )
-        if self.use_full_size_loss:
-            loss = self.loss_function(masked_resized_preds, masked_full_size_targets)
         return loss
 
     def configure_optimizers(self):

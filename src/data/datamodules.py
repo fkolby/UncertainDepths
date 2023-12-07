@@ -4,9 +4,11 @@ import pdb
 import lightning.pytorch as pl
 import numpy as np
 import pandas as pd
-import torch
+import random
+from omegaconf import DictConfig
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset, Subset
+import torch
 from torchvision import transforms
 
 from src.utility.train_utils import plot_and_save_tensor_as_fig, random_crop
@@ -18,17 +20,15 @@ from src.utility.train_utils import plot_and_save_tensor_as_fig, random_crop
 class KITTI_depth_dataset(Dataset):
     def __init__(
         self,
-        data_dir: str,
+        cfg:DictConfig, 
         train_or_test: str = "train",
         transform=None,
         target_transform=None,
-        input_height: int = 352,
-        input_width: int = 704,
         pytorch_lightning_in_use: bool = True,
     ) -> None:
-        self.data_dir = data_dir
+        self.data_dir = cfg.dataset_params.data_dir
         self.path_to_file = (
-            data_dir + "kitti_eigen_" + train_or_test + "_files.txt"
+            self.data_dir + "kitti_eigen_" + train_or_test + "_files.txt"
         )  # "/home/frederik/UncertainDepths/data/external/KITTI/train_input_and_label_paths.csv,
         # extract_file_paths_to_csv(data_dir, train_or_test, self.path_to_csv)
         self.transform = transform
@@ -39,9 +39,11 @@ class KITTI_depth_dataset(Dataset):
         else:
             Exception("Not implemented non-train/test for choosing files yet")
         self.train_or_test = train_or_test
-        self.input_height = input_height
-        self.input_width = input_width
+        self.input_height = cfg.dataset_params.input_height
+        self.input_width = cfg.dataset_params.input_width
         self.pytorch_lightning_in_use = pytorch_lightning_in_use
+        self.cfg = cfg
+
 
     def __getitem__(self, idx):
         sample_path = self.filenames[idx]
@@ -64,24 +66,81 @@ class KITTI_depth_dataset(Dataset):
 
         input_img = Image.open(input_path)
         label_img = Image.open(label_path)
-        no_transforms = transforms.Compose(
-            [
-                transforms.PILToTensor(),
-                transforms.CenterCrop((352, 1216)),
-                transforms.Lambda(lambda x: x / 256),  # 256 as per devkit
-            ]
-        )
 
+        """ 
+
+                no_transforms = transforms.Compose(
+                    [
+                        transforms.PILToTensor(),
+                        transforms.CenterCrop((352, 1216)),
+                        transforms.Lambda(lambda x: x / 256),  # 256 as per devkit
+                    ]
+                )
         label_untransformed = no_transforms(label_img.copy()).detach()  # Kitti benchmark crop.
+        """
+
+        if self.cfg.transforms.kb_crop: #region-of-interest-crop
+            height = input_img.height
+            width = input_img.width
+            top_margin = int(height - 352)
+            left_margin = int((width - 1216) / 2)
+            label_img= label_img.crop(
+                (left_margin, top_margin, left_margin + 1216, top_margin + 352))
+            input_img = input_img.crop(
+                (left_margin, top_margin, left_margin + 1216, top_margin + 352))
+        
+        if self.cfg.transforms.rotate and self.train_or_test=="train":
+            random_angle = (random.random() - 0.5) * 2 * self.cfg.transforms.rotational_degree  #dont set seed here, as that must be in trainer, for ensuring consistency for ensembles.
+            input_img = self.rotate_image(input_img, random_angle)
+            label_img = self.rotate_image(
+            label_img, random_angle, flag=Image.NEAREST)
+
 
         if self.transform:
             input_img = self.transform(input_img).float()
         if self.target_transform:
             label_img = self.target_transform(label_img).float()
-        input_img, label_img = random_crop(
-            img=input_img, depth=label_img, height=self.input_height, width=self.input_width
-        )
-        return input_img, label_img, label_untransformed
+        
+        if self.cfg.transforms.flip_LR and self.train_or_test=="train":
+            if random.random()>0.5:
+                input_img = torch.flip(input_img, dims=3) #BxCxHxW
+                label_img= torch.flip(label_img, dims=3) #BxCxHxW
+         
+        if self.cfg.transforms.rand_aug and self.train_or_test=="train":
+            if random.random()>0.5:
+                input_img = augment_image(input_img)
+
+        if self.cfg.transforms.rand_crop and self.train_or_test=="train":
+            input_img, label_img = random_crop(
+                img=input_img, depth=label_img, height=self.input_height, width=self.input_width
+            )
+        return input_img, label_img#, label_untransformed
+
+
+    def rotate_image(self, image:Image.Image, angle, flag=Image.BILINEAR): #taken from ZoeDepth-https://github.com/isl-org/ZoeDepth/blob/edb6daf45458569e24f50250ef1ed08c015f17a7/zoedepth/data/data_mono.py#L70
+        result = image.rotate(angle, resample=flag)
+        return result
+    
+    def augment_image(self, image): #taken from ZoeDepth (https://github.com/isl-org/ZoeDepth/blob/edb6daf45458569e24f50250ef1ed08c015f17a7/zoedepth/data/data_mono.py#L484)
+        # gamma augmentation
+        gamma = random.uniform(0.9, 1.1)
+        image_aug = image ** gamma
+
+        # brightness augmentation
+        if self.config.dataset == 'nyu':
+            brightness = random.uniform(0.75, 1.25)
+        else:
+            brightness = random.uniform(0.9, 1.1)
+        image_aug = image_aug * brightness
+
+        # color augmentation
+        colors = np.random.uniform(0.9, 1.1, size=3)
+        white = np.ones((image.shape[0], image.shape[1]))
+        color_image = np.stack([white * colors[i] for i in range(3)], axis=2)
+        image_aug *= color_image
+        image_aug = np.clip(image_aug, 0, 1)
+        return image_aug
+
 
     def __len__(self):
         return len(self.filenames)
@@ -90,19 +149,17 @@ class KITTI_depth_dataset(Dataset):
 class KITTIDataModule(pl.LightningDataModule):
     def __init__(
         self,
+        cfg: DictConfig,
         data_dir: str = "/home/frederik/UncertainDepths/data/external/KITTI/",
         batch_size: int = 32,
         use_val_dir_for_val_and_test: bool = True,
         transform=transforms.Compose([transforms.PILToTensor()]),
         target_transform=transforms.Compose([transforms.PILToTensor()]),
         num_workers: int = 8,
-        input_height: int = 352,
-        input_width: int = 704,
         pytorch_lightning_in_use=True,
     ) -> None:
         super().__init__()
         self.data_dir = data_dir
-        self.batch_size = batch_size
         self.use_val_dir_for_val_and_test = use_val_dir_for_val_and_test
         self.transform = transform
         self.target_transform = target_transform
@@ -110,10 +167,12 @@ class KITTIDataModule(pl.LightningDataModule):
         self.KITTI_train_set = None
         self.KITTI_test_set = None
         self.KITTI_predict_set = None
-        self.num_workers = num_workers
-        self.input_height = input_height
-        self.input_width = input_width
+        self.num_workers = cfg.dataset_params.num_workers
+        self.batch_size = cfg.hyperparameters.batch_size
+        self.input_height = cfg.dataset_params.input_height
+        self.input_width = cfg.dataset_params.input_width
         self.pytorch_lightning_in_use = pytorch_lightning_in_use
+        self.cfg = cfg
 
     def prepare_data(self) -> None:
         print("setting up datamodule")
@@ -124,12 +183,10 @@ class KITTIDataModule(pl.LightningDataModule):
         if stage == "fit":
             print("got to fittingsss")
             KITTI_train_val_set = KITTI_depth_dataset(
-                data_dir=self.data_dir,
                 train_or_test="train",
                 transform=self.transform,
                 target_transform=self.target_transform,
-                input_height=self.input_height,
-                input_width=self.input_width,
+                cfg=self.cfg,
                 pytorch_lightning_in_use=self.pytorch_lightning_in_use,
             )
             print("got to evaluating KITTI train val set")
@@ -147,25 +204,8 @@ class KITTIDataModule(pl.LightningDataModule):
 
             print("got to last part of if fit")
         if stage == "test" or stage == "predict":
-            self.KITTI_test_set = KITTI_depth_dataset(
-                data_dir=self.data_dir,
-                train_or_test="val",
-                transform=self.transform,
-                target_transform=self.target_transform,
-                input_height=self.input_height,
-                input_width=self.input_width,
-                pytorch_lightning_in_use=self.pytorch_lightning_in_use,
-            )
-            self.KITTI_predict_set = KITTI_depth_dataset(
-                data_dir=self.data_dir,
-                train_or_test="val",
-                transform=self.transform,
-                target_transform=self.target_transform,
-                input_height=self.input_height,
-                input_width=self.input_width,
-                pytorch_lightning_in_use=self.pytorch_lightning_in_use,
-            )
-
+            raise NotImplementedError
+        
     def train_dataloader(self, shuffle=True) -> DataLoader:
         print("hi train_loader called")
         if self.KITTI_train_set is None:
@@ -213,7 +253,7 @@ if __name__ == "__main__":
         transform=transforms.Compose([transforms.PILToTensor()]),
         target_transform=transforms.Compose([transforms.PILToTensor()]),
         input_height=352,
-        input_width=704,
+        input_width=1216,
     )
     a = iter(dataset)
     images = a.__next__()

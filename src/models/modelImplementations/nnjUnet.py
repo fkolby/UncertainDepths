@@ -84,8 +84,10 @@ class stochastic_unet(torch.nn.Module):
                 self.cfg.models.model_type = "Dropout"
             else:
                 self.cfg.models.model_type = "stochastic_unet"
+        print(multiplication_factor)
 
         if self.cfg.models.model_type == "Dropout":
+            print(multiplication_factor)
             first_downblock = [
                 InputDropout(p=self.cfg.models.p_input_dropout),
                 nnj.Conv2d(in_channels, multiplication_factor, 3, stride=1, padding=1),
@@ -95,6 +97,7 @@ class stochastic_unet(torch.nn.Module):
                 Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Tanh(),
             ]
+            print(first_downblock)
             last_upblock = [
                 nnj.Conv2d(
                     multiplication_factor * 2, multiplication_factor, 3, stride=1, padding=1
@@ -141,6 +144,8 @@ class stochastic_unet(torch.nn.Module):
             )
             for i in [1, 2, 3, 4]
         ]
+        print(first_downblock)
+
 
         self.stochastic_net = nnj.Sequential(
             *first_downblock,
@@ -175,6 +180,7 @@ class stochastic_unet(torch.nn.Module):
             ),
             add_hooks=True,
         )
+        print(stochastic_unet)
 
     def downblock_gen(self, in_channels, im_height, im_width):
         if self.cfg.models.model_type == "Dropout":
@@ -258,7 +264,31 @@ if __name__ == "__main__":
             "neural_net_param_multiplication_factor": 96,
             "dataset_params": {
                 "input_height": 352,
-                "input_width": 704,
+                "input_width": 1216,
+                "min_depth": 1e-4,
+                "max_depth": 80,
+            },
+            "models": {"model_type": "Dropout", "p_hidden_dropout": 0.5, "p_input_dropout": 0.2},
+        }
+    )
+    cfg_2 = OmegaConf.create(
+        {
+            "neural_net_param_multiplication_factor": 96,
+            "dataset_params": {
+                "input_height": 352,
+                "input_width": 1216,
+                "min_depth": 1e-4,
+                "max_depth": 80,
+            },
+            "models": {"model_type": "Dropout", "p_hidden_dropout": 0.5, "p_input_dropout": 0.2},
+        }
+    )
+    cfg_3 = OmegaConf.create(
+        {
+            "neural_net_param_multiplication_factor": 64,
+            "dataset_params": {
+                "input_height": 352,
+                "input_width": 1216,
                 "min_depth": 1e-4,
                 "max_depth": 80,
             },
@@ -266,10 +296,14 @@ if __name__ == "__main__":
         }
     )
     u_net = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
+    u_net2 = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg_2)
+    u_net3 = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg_3)
     # u_net.to(device="cuda")
     print(u_net.stochastic_net)
     t = torch.rand((8, 3, 352, 704), device="cuda")
     summary(u_net, (8, 3, 352, 704), depth=300)
+    summary(u_net2, (8, 3, 352, 1216), depth=300)
+    summary(u_net3, (8, 3, 352, 1216), depth=300)
     a = u_net(t)
 
     print(torch.max(u_net(t)))

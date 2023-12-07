@@ -61,7 +61,6 @@ def main(cfg: DictConfig):
     transform = transforms.Compose(
         [
             transforms.PILToTensor(),
-            transforms.CenterCrop((352, 1216)),
             transforms.Lambda(lambda x: x / 255),
             transforms.Normalize(
                 mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
@@ -71,7 +70,6 @@ def main(cfg: DictConfig):
     target_transform = transforms.Compose(
         [
             transforms.PILToTensor(),
-            transforms.CenterCrop((352, 1216)),
             transforms.Lambda(lambda x: x / 256),  # 256 as per devkit
         ]
     )
@@ -80,28 +78,20 @@ def main(cfg: DictConfig):
         cfg.models.model_type != "Ensemble"
     ):  # if ensemble we need to seed - and therefore instantiate dataloaders seperately (they should have different seed for every model)( Zoe does not use a training set)
         datamodule = KITTIDataModule(
-            data_dir=cfg.dataset_params.data_dir,
-            batch_size=cfg.hyperparameters.batch_size,
             transform=transform,
             target_transform=target_transform,
-            num_workers=cfg.dataset_params.num_workers,
-            input_height=cfg.dataset_params.input_height,
-            input_width=cfg.dataset_params.input_width,
+            cfg=cfg,
         )
         datamodule.setup(stage="fit")
 
     if cfg.models.model_type == "ZoeNK":
         # no normalization, just straight up load in. (apart from center-crop and randomcrop)
         datamoduleEval = KITTIDataModule(
-            data_dir=cfg.dataset_params.data_dir,
-            batch_size=cfg.hyperparameters.batch_size,
             transform=transforms.Compose(
-                [transforms.PILToTensor(), transforms.CenterCrop((352, 1216))]
+                [transforms.PILToTensor(),]
             ),
             target_transform=target_transform,
-            num_workers=cfg.dataset_params.num_workers,
-            input_height=cfg.dataset_params.input_height,
-            input_width=cfg.dataset_params.input_width,
+            cfg=cfg,
             pytorch_lightning_in_use=False,  # KEY ARGUMENT HERE FOR SPEED.
         )
         datamoduleEval.setup(stage="fit")
@@ -110,27 +100,18 @@ def main(cfg: DictConfig):
         seed_everything(cfg.seed)
         # Zoe does not want normalization (does it internally), Ensemble needs new seed for each run
         datamoduleEval = KITTIDataModule(
-            data_dir=cfg.dataset_params.data_dir,
-            batch_size=cfg.hyperparameters.batch_size,
             transform=transform,
             target_transform=target_transform,
-            num_workers=cfg.dataset_params.num_workers,
-            input_height=cfg.dataset_params.input_height,
-            input_width=cfg.dataset_params.input_width,
+            cfg=cfg,
             pytorch_lightning_in_use=False,  # KEY ARGUMENT HERE FOR SPEED.
         )
 
         datamoduleEval.setup(stage="fit")
     else:
-        # Zoe does not want normalization (does it internally), Ensemble needs new seed for each run
         datamoduleEval = KITTIDataModule(
-            data_dir=cfg.dataset_params.data_dir,
-            batch_size=cfg.hyperparameters.batch_size,
             transform=transform,
             target_transform=target_transform,
-            num_workers=cfg.dataset_params.num_workers,
-            input_height=cfg.dataset_params.input_height,
-            input_width=cfg.dataset_params.input_width,
+            cfg=cfg,
             pytorch_lightning_in_use=False,  # KEY ARGUMENT HERE FOR SPEED.
         )
 
@@ -147,7 +128,7 @@ def main(cfg: DictConfig):
     match cfg.models.model_type:
         case "stochastic_unet":
             neuralnet = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
-            summary(neuralnet, (1, 3, 352, 704), depth=300)
+            summary(neuralnet, (1, 3, 352, 1216), depth=300)
 
             model = Base_module(
                 model=neuralnet,
@@ -188,19 +169,15 @@ def main(cfg: DictConfig):
                 )  # Seed both dataloaders and neural net initialization.
 
                 datamodule = KITTIDataModule(
-                    data_dir=cfg.dataset_params.data_dir,
-                    batch_size=cfg.hyperparameters.batch_size,
                     transform=transform,
                     target_transform=target_transform,
-                    num_workers=cfg.dataset_params.num_workers,
-                    input_height=cfg.dataset_params.input_height,
-                    input_width=cfg.dataset_params.input_width,
+                    cfg=cfg,
                 )
                 datamodule.setup(stage="fit")
 
                 neuralnet = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
 
-                summary(neuralnet, (1, 3, 352, 704), depth=300)
+                summary(neuralnet, (1, 3, 352, 1216), depth=300)
 
                 model = Base_module(
                     model=neuralnet,
@@ -244,7 +221,7 @@ def main(cfg: DictConfig):
 
         case "Dropout":  # main difference to laplace posthoc is the fact that we do not put module into eval mode.
             neuralnet = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
-            summary(neuralnet, (1, 3, 352, 704), depth=300)
+            summary(neuralnet, (1, 3, 352, 1216), depth=300)
 
             model = Base_module(
                 model=neuralnet,

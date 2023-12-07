@@ -5,8 +5,14 @@ loss_function: "MSELoss"
 seed: 442
 eval_garg_crop: True
 eval_eigen_crop: False
-neural_net_param_multiplication_factor: 32
+neural_net_param_multiplication_factor: 96
 save_images_path: "/home/jbv415/UncertainDepths/src/models/outputs/"
+transforms:
+ rand_crop: False
+ kb_crop: True
+ rotate: True
+ flip_LR: True
+ rand_aug: True
 hyperparameters:
  learning_rate : 3e-4
  batch_size : 8 
@@ -16,9 +22,9 @@ dataset_params:
   min_depth : 1e-8
   max_depth : 80
   input_height: 352
-  input_width: 704
+  input_width: 1216
 trainer_args:
-  max_epochs: 25
+  max_epochs: 80
   
 defaults: 
  - models: stochastic_unet
