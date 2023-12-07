@@ -13,10 +13,12 @@ transforms:
  rotate: True
  flip_LR: True
  rand_aug: True
+ rotational_degree: 2.0 
 hyperparameters:
  learning_rate : 3e-4
  batch_size : 8 
 dataset_params:
+  name: "KITTI"
   data_dir : "/home/jbv415/UncertainDepths/data/external/KITTI/"
   num_workers: 8
   min_depth : 1e-8

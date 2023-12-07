@@ -84,10 +84,8 @@ class stochastic_unet(torch.nn.Module):
                 self.cfg.models.model_type = "Dropout"
             else:
                 self.cfg.models.model_type = "stochastic_unet"
-        print(multiplication_factor)
 
         if self.cfg.models.model_type == "Dropout":
-            print(multiplication_factor)
             first_downblock = [
                 InputDropout(p=self.cfg.models.p_input_dropout),
                 nnj.Conv2d(in_channels, multiplication_factor, 3, stride=1, padding=1),
@@ -97,7 +95,6 @@ class stochastic_unet(torch.nn.Module):
                 Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Tanh(),
             ]
-            print(first_downblock)
             last_upblock = [
                 nnj.Conv2d(
                     multiplication_factor * 2, multiplication_factor, 3, stride=1, padding=1
@@ -144,8 +141,6 @@ class stochastic_unet(torch.nn.Module):
             )
             for i in [1, 2, 3, 4]
         ]
-        print(first_downblock)
-
 
         self.stochastic_net = nnj.Sequential(
             *first_downblock,
@@ -180,7 +175,6 @@ class stochastic_unet(torch.nn.Module):
             ),
             add_hooks=True,
         )
-        print(stochastic_unet)
 
     def downblock_gen(self, in_channels, im_height, im_width):
         if self.cfg.models.model_type == "Dropout":

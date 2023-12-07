@@ -21,7 +21,7 @@ class Base_module(pl.LightningModule):
         self.batch_size = cfg.hyperparameters.batch_size
         self.epochs = cfg.trainer_args.max_epochs
         self.steps_per_epoch = steps_per_epoch
-        try: #set it if it is in struct
+        try:  # set it if it is in struct
             self.use_full_size_loss = cfg.dataset_params.use_full_size_loss
         except:
             self.use_full_size_loss = False
@@ -43,7 +43,9 @@ class Base_module(pl.LightningModule):
 
         print(f"TRAIN:  x: {x.shape} y: {y.shape}, pred: {preds.shape}, tstep: {self.tstep}")
 
-        if self.tstep % 1000 == 0 or (self.step < 1000 and self.tstep % 100 ==0): #dont log every single image (space issues. (space issues.)
+        if self.tstep % 1000 == 0 or (
+            self.tstep < 1000 and self.tstep % 100 == 0
+        ):  # dont log every single image (space issues. (space issues.)
             log_images(
                 img=x[0, :, :, :].detach(),
                 depth=y[0, :, :, :].detach(),
@@ -53,9 +55,9 @@ class Base_module(pl.LightningModule):
                 step=self.tstep,
             )
         mask = torch.logical_and(
-            y > self.min_depth, y < self.max_depth
+            y >= self.min_depth, y <= self.max_depth
         )  # perhaps also punish above maxdepth during training?
-        loss = self.loss_function(preds * mask, y * mask)
+        loss = self.loss_function(preds[mask], y[mask])
 
         self.log("train_loss", loss)
         wandb.log(
@@ -65,8 +67,8 @@ class Base_module(pl.LightningModule):
         # Log also full-size version (what we eventually will be evaluated on)
 
         log_loss_metrics(
-            preds=x.detach(),
-            targets=y.detach(),
+            preds=preds[mask].detach(),
+            targets=y[mask].detach(),
             tstep=self.tstep,
             loss_prefix="train_fullsize",
         )
@@ -82,16 +84,15 @@ class Base_module(pl.LightningModule):
         preds = self(x)
         print(f"VALIDATION: x: {x.shape} y: {y.shape}, pred: {preds.shape}")
 
-        mask = torch.logical_and(y > self.min_depth, y < self.max_depth)
-        loss = self.loss_function(preds * mask, y * mask)
+        mask = torch.logical_and(y >= self.min_depth, y <= self.max_depth)
+        loss = self.loss_function(preds[mask], y[mask])
 
         wandb.log({"val_loss": loss}, step=self.tstep)
         self.log("validation_loss", loss)
 
-
         log_loss_metrics(
-            preds=x.detach(),
-            targets=y.detach(),
+            preds=preds[mask].detach(),
+            targets=y[mask].detach(),
             tstep=self.tstep,
             loss_prefix="val",
         )

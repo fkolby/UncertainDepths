@@ -88,11 +88,12 @@ def main(cfg: DictConfig):
         # no normalization, just straight up load in. (apart from center-crop and randomcrop)
         datamoduleEval = KITTIDataModule(
             transform=transforms.Compose(
-                [transforms.PILToTensor(),]
+                [
+                    transforms.PILToTensor(),
+                ]
             ),
             target_transform=target_transform,
             cfg=cfg,
-            pytorch_lightning_in_use=False,  # KEY ARGUMENT HERE FOR SPEED.
         )
         datamoduleEval.setup(stage="fit")
 
@@ -103,7 +104,6 @@ def main(cfg: DictConfig):
             transform=transform,
             target_transform=target_transform,
             cfg=cfg,
-            pytorch_lightning_in_use=False,  # KEY ARGUMENT HERE FOR SPEED.
         )
 
         datamoduleEval.setup(stage="fit")
@@ -112,7 +112,6 @@ def main(cfg: DictConfig):
             transform=transform,
             target_transform=target_transform,
             cfg=cfg,
-            pytorch_lightning_in_use=False,  # KEY ARGUMENT HERE FOR SPEED.
         )
 
         datamoduleEval.setup(stage="fit")

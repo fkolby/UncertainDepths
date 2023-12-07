@@ -20,11 +20,10 @@ from src.utility.train_utils import plot_and_save_tensor_as_fig, random_crop
 class KITTI_depth_dataset(Dataset):
     def __init__(
         self,
-        cfg:DictConfig, 
+        cfg: DictConfig,
         train_or_test: str = "train",
         transform=None,
         target_transform=None,
-        pytorch_lightning_in_use: bool = True,
     ) -> None:
         self.data_dir = cfg.dataset_params.data_dir
         self.path_to_file = (
@@ -41,9 +40,7 @@ class KITTI_depth_dataset(Dataset):
         self.train_or_test = train_or_test
         self.input_height = cfg.dataset_params.input_height
         self.input_width = cfg.dataset_params.input_width
-        self.pytorch_lightning_in_use = pytorch_lightning_in_use
         self.cfg = cfg
-
 
     def __getitem__(self, idx):
         sample_path = self.filenames[idx]
@@ -79,68 +76,75 @@ class KITTI_depth_dataset(Dataset):
         label_untransformed = no_transforms(label_img.copy()).detach()  # Kitti benchmark crop.
         """
 
-        if self.cfg.transforms.kb_crop: #region-of-interest-crop
+        if self.cfg.transforms.kb_crop:  # region-of-interest-crop
             height = input_img.height
             width = input_img.width
             top_margin = int(height - 352)
             left_margin = int((width - 1216) / 2)
-            label_img= label_img.crop(
-                (left_margin, top_margin, left_margin + 1216, top_margin + 352))
+            label_img = label_img.crop(
+                (left_margin, top_margin, left_margin + 1216, top_margin + 352)
+            )
             input_img = input_img.crop(
-                (left_margin, top_margin, left_margin + 1216, top_margin + 352))
-        
-        if self.cfg.transforms.rotate and self.train_or_test=="train":
-            random_angle = (random.random() - 0.5) * 2 * self.cfg.transforms.rotational_degree  #dont set seed here, as that must be in trainer, for ensuring consistency for ensembles.
-            input_img = self.rotate_image(input_img, random_angle)
-            label_img = self.rotate_image(
-            label_img, random_angle, flag=Image.NEAREST)
+                (left_margin, top_margin, left_margin + 1216, top_margin + 352)
+            )
 
+        if self.cfg.transforms.rotate and self.train_or_test == "train":
+            random_angle = (
+                (random.random() - 0.5) * 2 * self.cfg.transforms.rotational_degree
+            )  # dont set seed here, as that must be in trainer, for ensuring consistency for ensembles.
+            input_img = self.rotate_image(input_img, random_angle)
+            label_img = self.rotate_image(label_img, random_angle, flag=Image.NEAREST)
 
         if self.transform:
             input_img = self.transform(input_img).float()
         if self.target_transform:
             label_img = self.target_transform(label_img).float()
-        
-        if self.cfg.transforms.flip_LR and self.train_or_test=="train":
-            if random.random()>0.5:
-                input_img = torch.flip(input_img, dims=3) #BxCxHxW
-                label_img= torch.flip(label_img, dims=3) #BxCxHxW
-         
-        if self.cfg.transforms.rand_aug and self.train_or_test=="train":
-            if random.random()>0.5:
-                input_img = augment_image(input_img)
 
-        if self.cfg.transforms.rand_crop and self.train_or_test=="train":
-            input_img, label_img = random_crop(
+        if self.cfg.transforms.flip_LR and self.train_or_test == "train":
+            assert isinstance(input_img, torch.Tensor)
+            if random.random() > 0.5:
+                input_img = torch.flip(input_img, dims=[-1])  # CxHxW
+                label_img = torch.flip(label_img, dims=[-1])  # CxHxW
+
+        if self.cfg.transforms.rand_aug and self.train_or_test == "train":
+            if random.random() > 0.5:
+                input_img = self.augment_image(input_img)
+
+        if self.cfg.transforms.rand_crop and self.train_or_test == "train":
+            input_img, label_img = self.random_crop(
                 img=input_img, depth=label_img, height=self.input_height, width=self.input_width
             )
-        return input_img, label_img#, label_untransformed
 
+        return input_img, label_img  # , label_untransformed
 
-    def rotate_image(self, image:Image.Image, angle, flag=Image.BILINEAR): #taken from ZoeDepth-https://github.com/isl-org/ZoeDepth/blob/edb6daf45458569e24f50250ef1ed08c015f17a7/zoedepth/data/data_mono.py#L70
+    def rotate_image(
+        self, image: Image.Image, angle, flag=Image.BILINEAR
+    ):  # taken from ZoeDepth-https://github.com/isl-org/ZoeDepth/blob/edb6daf45458569e24f50250ef1ed08c015f17a7/zoedepth/data/data_mono.py#L70
         result = image.rotate(angle, resample=flag)
         return result
-    
-    def augment_image(self, image): #taken from ZoeDepth (https://github.com/isl-org/ZoeDepth/blob/edb6daf45458569e24f50250ef1ed08c015f17a7/zoedepth/data/data_mono.py#L484)
+
+    def augment_image(
+        self, image: torch.Tensor
+    ):  # inspired by ZoeDepth (https://github.com/isl-org/ZoeDepth/blob/edb6daf45458569e24f50250ef1ed08c015f17a7/zoedepth/data/data_mono.py#L484)
         # gamma augmentation
+        assert isinstance(image, torch.Tensor)
         gamma = random.uniform(0.9, 1.1)
-        image_aug = image ** gamma
+        image_aug = image**gamma
 
         # brightness augmentation
-        if self.config.dataset == 'nyu':
+        if self.cfg.dataset_params.name == "nyu":
             brightness = random.uniform(0.75, 1.25)
         else:
             brightness = random.uniform(0.9, 1.1)
         image_aug = image_aug * brightness
 
         # color augmentation
-        colors = np.random.uniform(0.9, 1.1, size=3)
-        white = np.ones((image.shape[0], image.shape[1]))
-        color_image = np.stack([white * colors[i] for i in range(3)], axis=2)
+        colors = torch.rand(size=(3, 1, 1)) * 0.2 + 0.9  # 0.9-1.1
+        white = torch.ones((3, image.shape[1], image.shape[2]))
+        color_image = colors * white
         image_aug *= color_image
-        image_aug = np.clip(image_aug, 0, 1)
+        image_aug = torch.clamp(image_aug, 0, 1)
         return image_aug
-
 
     def __len__(self):
         return len(self.filenames)
@@ -156,7 +160,6 @@ class KITTIDataModule(pl.LightningDataModule):
         transform=transforms.Compose([transforms.PILToTensor()]),
         target_transform=transforms.Compose([transforms.PILToTensor()]),
         num_workers: int = 8,
-        pytorch_lightning_in_use=True,
     ) -> None:
         super().__init__()
         self.data_dir = data_dir
@@ -171,7 +174,6 @@ class KITTIDataModule(pl.LightningDataModule):
         self.batch_size = cfg.hyperparameters.batch_size
         self.input_height = cfg.dataset_params.input_height
         self.input_width = cfg.dataset_params.input_width
-        self.pytorch_lightning_in_use = pytorch_lightning_in_use
         self.cfg = cfg
 
     def prepare_data(self) -> None:
@@ -187,7 +189,6 @@ class KITTIDataModule(pl.LightningDataModule):
                 transform=self.transform,
                 target_transform=self.target_transform,
                 cfg=self.cfg,
-                pytorch_lightning_in_use=self.pytorch_lightning_in_use,
             )
             print("got to evaluating KITTI train val set")
             self.KITTI_train_set = Subset(
@@ -205,7 +206,7 @@ class KITTIDataModule(pl.LightningDataModule):
             print("got to last part of if fit")
         if stage == "test" or stage == "predict":
             raise NotImplementedError
-        
+
     def train_dataloader(self, shuffle=True) -> DataLoader:
         print("hi train_loader called")
         if self.KITTI_train_set is None:
