@@ -20,6 +20,7 @@ hyperparameters:
 dataset_params:
   name: "KITTI"
   data_dir : "/home/jbv415/UncertainDepths/data/external/KITTI/"
+  test_set_is_actually_valset: True
   num_workers: 8
   min_depth : 1e-8
   max_depth : 80

@@ -1,0 +1,10 @@
+model_type: "Online_Laplace"
+n_models: 100
+train_samples: 1
+prior_prec: 1
+update_hession: True
+one_hessian_per_sampling : False
+hessian_memory_factor: 0.999
+use_learning_rate_for_memory_factor: True
+hessian_scale: 1
+weight_reg_factor: 0

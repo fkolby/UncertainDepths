@@ -22,6 +22,7 @@ class KITTI_depth_dataset(Dataset):
         self,
         cfg: DictConfig,
         train_or_test: str = "train",
+        train_or_test_transform: str = "train",
         transform=None,
         target_transform=None,
     ) -> None:
@@ -38,6 +39,7 @@ class KITTI_depth_dataset(Dataset):
         else:
             Exception("Not implemented non-train/test for choosing files yet")
         self.train_or_test = train_or_test
+        self.train_or_test_transform = train_or_test_transform
         self.input_height = cfg.dataset_params.input_height
         self.input_width = cfg.dataset_params.input_width
         self.cfg = cfg
@@ -88,7 +90,7 @@ class KITTI_depth_dataset(Dataset):
                 (left_margin, top_margin, left_margin + 1216, top_margin + 352)
             )
 
-        if self.cfg.transforms.rotate and self.train_or_test == "train":
+        if self.cfg.transforms.rotate and self.train_or_test_transform == "train":
             random_angle = (
                 (random.random() - 0.5) * 2 * self.cfg.transforms.rotational_degree
             )  # dont set seed here, as that must be in trainer, for ensuring consistency for ensembles.
@@ -100,17 +102,17 @@ class KITTI_depth_dataset(Dataset):
         if self.target_transform:
             label_img = self.target_transform(label_img).float()
 
-        if self.cfg.transforms.flip_LR and self.train_or_test == "train":
+        if self.cfg.transforms.flip_LR and self.train_or_test_transform == "train":
             assert isinstance(input_img, torch.Tensor)
             if random.random() > 0.5:
                 input_img = torch.flip(input_img, dims=[-1])  # CxHxW
                 label_img = torch.flip(label_img, dims=[-1])  # CxHxW
 
-        if self.cfg.transforms.rand_aug and self.train_or_test == "train":
+        if self.cfg.transforms.rand_aug and self.train_or_test_transform == "train":
             if random.random() > 0.5:
                 input_img = self.augment_image(input_img)
 
-        if self.cfg.transforms.rand_crop and self.train_or_test == "train":
+        if self.cfg.transforms.rand_crop and self.train_or_test_transform == "train":
             input_img, label_img = self.random_crop(
                 img=input_img, depth=label_img, height=self.input_height, width=self.input_width
             )
@@ -143,7 +145,7 @@ class KITTI_depth_dataset(Dataset):
         white = torch.ones((3, image.shape[1], image.shape[2]))
         color_image = colors * white
         image_aug *= color_image
-        image_aug = torch.clamp(image_aug, 0, 1)
+        # image_aug = torch.clamp(image_aug, 0, 1)
         return image_aug
 
     def __len__(self):
@@ -190,6 +192,16 @@ class KITTIDataModule(pl.LightningDataModule):
                 target_transform=self.target_transform,
                 cfg=self.cfg,
             )
+            if not self.cfg.dataset_params.test_set_is_actually_valset:
+                print("Currently testset is just valset without disturbing augmentations.")
+                raise NotImplementedError
+            KITTI_test_set = KITTI_depth_dataset(
+                train_or_test="train",
+                train_or_test_transform="val",
+                transform=self.transform,
+                target_transform=self.target_transform,
+                cfg=self.cfg,
+            )
             print("got to evaluating KITTI train val set")
             self.KITTI_train_set = Subset(
                 # KITTI_train_val_set, np.arange(0, 74272, dtype=int).tolist() use only if full dataset (not eigen)
@@ -198,6 +210,11 @@ class KITTIDataModule(pl.LightningDataModule):
             )  # corresponds to 86% of dataset, while still being a different drive.
             self.KITTI_val_set = Subset(
                 KITTI_train_val_set, np.arange(18525, len(KITTI_train_val_set), dtype=int).tolist()
+            )
+            print("len of train-vallength: ", len(KITTI_train_val_set))
+
+            self.KITTI_test_set = Subset(
+                KITTI_test_set, np.arange(18525, len(KITTI_test_set), dtype=int).tolist()
             )
             # plot_and_save_tensor_as_fig(self.KITTI_train_set[-1][0], "last_train_img")
             # plot_and_save_tensor_as_fig(self.KITTI_val_set[0][0], "first_val_img")
@@ -238,6 +255,12 @@ class KITTIDataModule(pl.LightningDataModule):
         )
 
     def test_dataloader(self, shuffle=False) -> DataLoader:
+        print("test loading!")
+        if self.KITTI_test_set is None:
+            raise NameError(
+                "Warning: KITTI_train_set is not initialized. Did setup run successfully?"
+            )
+
         return DataLoader(
             self.KITTI_test_set,
             shuffle=shuffle,

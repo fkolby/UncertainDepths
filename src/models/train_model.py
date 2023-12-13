@@ -51,7 +51,10 @@ def main(cfg: DictConfig):
         os.environ["WANDB_MODE"] = "online"
         trainer_args = {"max_epochs": cfg.trainer_args.max_epochs}
 
-    wandb.config = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
+    wandb.init(
+        project="UncertainDepths",
+        config=OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True),
+    )
     logger = loggers.WandbLogger(project="UncertainDepths")
     log = logging.getLogger(__name__)
     log.info(OmegaConf.to_yaml(cfg))
@@ -141,7 +144,7 @@ def main(cfg: DictConfig):
             trainer.fit(
                 model=model,
                 train_dataloaders=datamodule.train_dataloader(),
-                val_dataloaders=datamodule.val_dataloader(),
+                val_dataloaders=datamodule.test_dataloader(),
             )
             trainer.save_checkpoint(f"{cfg.models.model_type}.ckpt")
             # now we dont need (or want) lightning anymore
@@ -156,7 +159,7 @@ def main(cfg: DictConfig):
             pprint(
                 eval_model(
                     model=model,
-                    test_loader=datamoduleEval.val_dataloader(),
+                    test_loader=datamoduleEval.test_dataloader(),
                     dataloader_for_hessian=datamodule.train_dataloader(),
                     cfg=cfg,
                 )
@@ -190,7 +193,7 @@ def main(cfg: DictConfig):
                 trainer.fit(
                     model=model,
                     train_dataloaders=datamodule.train_dataloader(),
-                    val_dataloaders=datamodule.val_dataloader(),
+                    val_dataloaders=datamodule.test_dataloader(),
                 )
                 trainer.save_checkpoint(f"{cfg.models.model_type}.ckpt")
                 # now we dont need (or want) lightning anymore
@@ -213,7 +216,7 @@ def main(cfg: DictConfig):
             pprint(
                 eval_model(
                     model=model,
-                    test_loader=datamoduleEval.val_dataloader(),
+                    test_loader=datamoduleEval.test_dataloader(),
                     cfg=cfg,
                 )
             )
@@ -234,7 +237,7 @@ def main(cfg: DictConfig):
             trainer.fit(
                 model=model,
                 train_dataloaders=datamodule.train_dataloader(),
-                val_dataloaders=datamodule.val_dataloader(),
+                val_dataloaders=datamodule.test_dataloader(),
             )
             trainer.save_checkpoint(f"{cfg.models.model_type}.ckpt")
             # now we dont need (or want) lightning anymore
@@ -249,7 +252,7 @@ def main(cfg: DictConfig):
             pprint(
                 eval_model(
                     model=model,
-                    test_loader=datamoduleEval.val_dataloader(),
+                    test_loader=datamoduleEval.test_dataloader(),
                     cfg=cfg,
                 )
             )
@@ -268,7 +271,7 @@ def main(cfg: DictConfig):
             trainer.fit(
                 model=model,
                 train_dataloaders=datamodule.train_dataloader(),
-                val_dataloaders=datamodule.val_dataloader(),
+                val_dataloaders=datamodule.test_dataloader(),
             )
             trainer.save_checkpoint(f"{cfg.models.model_type}.ckpt")
             # now we dont need (or want) lightning anymore
@@ -284,7 +287,7 @@ def main(cfg: DictConfig):
                 eval_model(
                     model=model,
                     model_name="Unet",
-                    test_loader=datamoduleEval.val_dataloader(),
+                    test_loader=datamoduleEval.test_dataloader(),
                     cfg=cfg,
                 )
             )
@@ -296,7 +299,7 @@ def main(cfg: DictConfig):
                 eval_model(
                     model=ZoeNK,
                     model_name="ZoeNK",
-                    test_loader=datamoduleEval.val_dataloader(),
+                    test_loader=datamoduleEval.test_dataloader(),
                     cfg=cfg,
                 )
             )

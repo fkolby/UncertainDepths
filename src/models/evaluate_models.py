@@ -49,7 +49,7 @@ def eval_model(
         laplace = DiagLaplace()
         print("Calcing hessian")
         a = 0
-        for image, _, _ in dataloader_for_hessian:  # should be train.
+        for image, _ in dataloader_for_hessian:  # should be train.
             a += 1
             # compute hessian approximation
             print(a, "of ", len(dataloader_for_hessian), flush=True)
@@ -85,7 +85,7 @@ def eval_model(
             if not sample["has_valid_depth"]:
                 print("validDEPTH?")
                 continue
-        images, depths, _ = sample
+        images, depths = sample
         images = images.to(device=device)
         depths = depths.to(device=device)  # BxCxHxW
 
