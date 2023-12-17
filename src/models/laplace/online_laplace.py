@@ -4,9 +4,102 @@ import time
 from torch.nn import functional as F
 
 from pytorch_laplace import MSEHessianCalculator
+from torch.nn import MSELoss
 from pytorch_laplace.laplace.diag import DiagLaplace
 
 
+class OnlineLaplace:
+        def __init__(self, net, cfg, register_forward_hook=False,**kwargs):
+            self.cfg = cfg
+            self.net = net
+            self.prior_prec = torch.tensor(cfg.models.online_laplace.prior_prec)
+            self.hessian_scale = torch.tensor(cfg.models.online_laplace.hessian_scale)
+            self.n_samples= torch.tensor(cfg.models.online_laplace.n_samples)
+            self.mse = MSEHessianCalculator(approximation_accuracy="approx", hessian_shape="diag",backend="nnj")
+            self.log_auxillary = kwargs.get("log_auxillary",False)
+            self.sampler = OnlineLaplace()
+
+            self.dataset_size = 1 
+
+            self.precision= self.sampler.init_hessian(net=self.net, data_size = self.dataset_size) 
+            if self.log_auxillary:
+                self.priors = []
+                self.loss = []
+                #### implement self.forwardhoook 
+
+        
+        def log_prior(self,parms): #log(p(theta))
+            return 0.5*self.prior_prec*torch.sum(parms.detach()**2)
+        
+        def log_conditional_y(self,pred,target): #log(p(y|theta,x,f))
+            log_gaussian = MSELoss()(pred,target).detach()
+            return log_gaussian
+
+            
+             
+        def __call__(self,x,y):
+            pred = self.net(x)
+            theta = parameters_to_vector(self.net)
+            gradient_avg = torch.zeros_like(self.theta)
+            #0-th order
+
+            prior_precision=1
+            q_sigma = sampler.posterior scale
+            samples = sampler.sample(, self.n_samples=1)#)#(?????)
+            loss=0
+            #1st- order
+            for sampled_thetas in samples:
+                vector_to_parameters(sampled_thetas ,self.net.parameters())
+                conditional_log_gauss = self.log_conditional_y(pred,y)
+                log_prior = log_prior(self.theta)
+                loss += log_prior + conditional_log_gauss
+                
+
+            self.t
+            gradient_avg /= self.n_samples
+            vector_to_parameters(self.theta, self.net)
+
+            #2-order
+            tmp_hessian = ...#
+            self.hessian = (1-self.cfg.hyperparameters.forget_factor)*self.hessian + tmp_hessian
+
+
+            return loss
+
+
+
+            
+
+
+            
+
+
+            
+
+
+
+        def update_gradients(self,x,y):
+
+        
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+
+""" 
 class OnlineLaplace:
     # Heavily inspired by Laplacian AE class (https://github.com/FrederikWarburg/LaplaceAE/blob/3ea27491a0ce3363186a80cc9cd88687d5688dea/src/laplace/onlinelaplace.py#L77)
     def __init__(self, net, dataset_size, cfg, register_forward_hook=False):
@@ -85,7 +178,7 @@ class OnlineLaplace:
             # compute mse for sample net
             mse_running_sum += F.mse_loss(pred_sample.view(*x.shape), x)
 
-            """ if (not self.one_hessian_per_sampling) and train:
+            """ """if (not self.one_hessian_per_sampling) and train:
                 # compute hessian for sample net
                 start = time.time()
 
@@ -96,7 +189,7 @@ class OnlineLaplace:
                 self.timings["compute_hessian"] += time.time() - start
 
                 # append results
-                hessian.append(h_s) """
+                hessian.append(h_s)""" """
             preds.append(pred_sample)
 
         # reset the network parameters with the mean parameter (MAP estimate parameters)
@@ -156,3 +249,4 @@ class OnlineLaplace:
 
 def weight_decay(mu_q, prior_prec):
     return 0.5 * (torch.matmul(mu_q.T, mu_q) / prior_prec + torch.log(prior_prec))
+ """

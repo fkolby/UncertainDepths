@@ -16,6 +16,7 @@ from pytorch_lightning import callbacks
 from torch.nn import MSELoss
 from torchinfo import summary
 from torchvision import transforms
+import gc
 
 import wandb
 from src.data.datamodules import KITTIDataModule
@@ -51,16 +52,19 @@ def main(cfg: DictConfig):
         os.environ["WANDB_MODE"] = "online"
         trainer_args = {"max_epochs": cfg.trainer_args.max_epochs}
 
-    wandb.init(
+    wandb_run = wandb.init(
         project="UncertainDepths",
         config=OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True),
     )
+    wandb_run.log_code(
+    "~/UncertainDepths/src",
+    include_fn=lambda path: path.endswith(".py") and not(path.contains("/pytorch-laplace/") or path.contains("/nnj/") or path.contains("/wandb/") or  path.contains("cache/")))
     logger = loggers.WandbLogger(project="UncertainDepths")
     log = logging.getLogger(__name__)
     log.info(OmegaConf.to_yaml(cfg))
 
     # =========================== TRANSFORMS & DATAMODULES ===============================================
-
+    seed_everything(cfg.seed)
     transform = transforms.Compose(
         [
             transforms.PILToTensor(),
@@ -98,10 +102,9 @@ def main(cfg: DictConfig):
             target_transform=target_transform,
             cfg=cfg,
         )
-        datamoduleEval.setup(stage="fit")
+        datamoduleEval.setup(stage="fit",dataset_type_is_ood =cfg.OOD.use_white_noise_box_test)
 
     elif cfg.models.model_type == "Ensemble":
-        seed_everything(cfg.seed)
         # Zoe does not want normalization (does it internally), Ensemble needs new seed for each run
         datamoduleEval = KITTIDataModule(
             transform=transform,
@@ -109,7 +112,7 @@ def main(cfg: DictConfig):
             cfg=cfg,
         )
 
-        datamoduleEval.setup(stage="fit")
+        datamoduleEval.setup(stage="fit",dataset_type_is_ood =cfg.OOD.use_white_noise_box_test)
     else:
         datamoduleEval = KITTIDataModule(
             transform=transform,
@@ -117,7 +120,7 @@ def main(cfg: DictConfig):
             cfg=cfg,
         )
 
-        datamoduleEval.setup(stage="fit")
+        datamoduleEval.setup(stage="fit",dataset_type_is_ood =cfg.OOD.use_white_noise_box_test)
 
     # ================================ SET LOSS FUNC ======================================================
 
@@ -152,6 +155,15 @@ def main(cfg: DictConfig):
                 model._modules["model"].state_dict(),
                 f"{cfg.models.model_type}.pt",
             )
+            ## free up memory again
+            del trainer
+            del model
+            del datamodule
+            del neuralnet
+            gc.collect()
+            torch.cuda.empty_cache()
+
+
             model = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
             model.load_state_dict(torch.load(f"{cfg.models.model_type}.pt"))
 
@@ -160,7 +172,7 @@ def main(cfg: DictConfig):
                 eval_model(
                     model=model,
                     test_loader=datamoduleEval.test_dataloader(),
-                    dataloader_for_hessian=datamodule.train_dataloader(),
+                    dataloader_for_hessian=datamoduleEval.train_dataloader(),
                     cfg=cfg,
                 )
             )
@@ -196,11 +208,21 @@ def main(cfg: DictConfig):
                     val_dataloaders=datamodule.test_dataloader(),
                 )
                 trainer.save_checkpoint(f"{cfg.models.model_type}.ckpt")
+                
                 # now we dont need (or want) lightning anymore
                 torch.save(
                     model._modules["model"].state_dict(),
                     f"{cfg.models.model_type}_{i}.pt",
                 )
+                ## free up memory again
+                del trainer
+                del model
+                del datamodule
+                del neuralnet
+                gc.collect()
+                torch.cuda.empty_cache()
+
+                print(torch.cuda.memory_summary())
 
             seed_everything(
                 seed=cfg.seed
@@ -245,6 +267,15 @@ def main(cfg: DictConfig):
                 model._modules["model"].state_dict(),
                 f"{cfg.models.model_type}.pt",
             )
+            #free up memory
+            del trainer
+            del model
+            del datamodule
+            del neuralnet
+            gc.collect()
+            torch.cuda.empty_cache()
+
+            #dont want/need lightning now
             model = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
             model.load_state_dict(torch.load(f"{cfg.models.model_type}.pt"))
 
@@ -256,6 +287,9 @@ def main(cfg: DictConfig):
                     cfg=cfg,
                 )
             )
+            
+
+
 
         case "BaseUNet":
             raise NotImplementedError

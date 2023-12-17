@@ -1,2 +1,2 @@
 
-srun --gres=gpu:a100:1 --time=1-00:00:00 --cpus-per-task=8 python models/train_model.py pdb_disabled=True save_images=True
+srun --gres=gpu:a40:1 --time=1-00:00:00 --cpus-per-task=8 python models/train_model.py pdb_disabled=False save_images=True

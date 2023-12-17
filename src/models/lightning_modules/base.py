@@ -30,7 +30,8 @@ class Base_module(pl.LightningModule):
         return self.model(inputs)
 
     def training_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, _ = batch #third argument is only used during eval (OOD-classification)
+        
 
         try:
             assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
@@ -76,7 +77,7 @@ class Base_module(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, y = batch
+        x, y, _ = batch #third argument is only used during eval (OOD-classification)
 
         assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
             x[0, 0, :, :].shape == torch.Size((self.input_height, self.input_width))

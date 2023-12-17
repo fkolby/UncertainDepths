@@ -27,8 +27,9 @@ dataset_params:
   input_height: 352
   input_width: 1216
 trainer_args:
-  max_epochs: 80
-  
+  max_epochs: 50
+OOD:
+  use_white_noise_box_test: True
 defaults: 
  - models: stochastic_unet
  - _self_

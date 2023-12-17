@@ -30,12 +30,13 @@ def get_intrinsics(H, W):
 
 def img_dicts():
     d = {"depth": [], "img": [], "preds": []}
-    d = {"Unet": deepcopy(d), "ZoeNK": deepcopy(d)}
-    path_to_pics = "/home/jbv415/UncertainDepths/src/models/outputs/"
+    d = {"stochastic": deepcopy(d), "ZoeNK": deepcopy(d)}
+    path_to_pics = "/home/jbv415/UncertainDepths/src/models/outputs/images/10_12_2023_06_55_29_stochastic_unet"
     visuals = os.listdir(path_to_pics)
     visuals.sort()
+    print(visuals)
     for el in visuals:
-        if el[-4:] != ".npy" or len(el.split("_")) != 4:
+        if el[-4:] != ".npy":# or len(el.split("_")) != 4:
             continue
         print(el)
         model = el.split("_")[2]
@@ -71,12 +72,14 @@ def img_dicts():
                 .squeeze()
                 .numpy(force=True)
             ]
+        
     return d
 
 
 def main():
     server = viser.ViserServer()
     depths = img_dicts()
+    print(depths)
     # Add some common GUI elements: number inputs, sliders, vectors, checkboxes.
     with server.add_gui_folder("Read-only"):
         gui_counter = server.add_gui_number(
@@ -103,7 +106,7 @@ def main():
         )
         with server.add_gui_folder("Text toggle"):
             img_type = server.add_gui_dropdown("Img type plane", ("preds", "depth", "img"))
-            model = server.add_gui_dropdown("model", ("Unet", "ZoeNK"))
+            model = server.add_gui_dropdown("model", ("stochastic", "ZoeNK"))
             img_num = server.add_gui_vector2(
                 "img number",
                 initial_value=(2, -1),

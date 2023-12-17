@@ -141,7 +141,7 @@ def calc_loss_metrics(preds, targets):
 
 
 def log_loss_metrics(preds, targets, tstep=0, loss_prefix="train"):
-    metrics = calc_loss_metrics(preds, targets)
+    metrics = calc_loss_metrics(preds=preds,targets=targets)
 
     return wandb.log(
         {

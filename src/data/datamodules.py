@@ -25,6 +25,7 @@ class KITTI_depth_dataset(Dataset):
         train_or_test_transform: str = "train",
         transform=None,
         target_transform=None,
+        **kwargs,
     ) -> None:
         self.data_dir = cfg.dataset_params.data_dir
         self.path_to_file = (
@@ -42,6 +43,8 @@ class KITTI_depth_dataset(Dataset):
         self.train_or_test_transform = train_or_test_transform
         self.input_height = cfg.dataset_params.input_height
         self.input_width = cfg.dataset_params.input_width
+        print(kwargs)
+        self.dataset_type_is_ood = kwargs.get("dataset_type_is_ood",False)
         self.cfg = cfg
 
     def __getitem__(self, idx):
@@ -116,8 +119,23 @@ class KITTI_depth_dataset(Dataset):
             input_img, label_img = self.random_crop(
                 img=input_img, depth=label_img, height=self.input_height, width=self.input_width
             )
+        
+        if self.dataset_type_is_ood and self.cfg.OOD.use_white_noise_box_test:
+            c,h,w = input_img.shape
 
-        return input_img, label_img  # , label_untransformed
+            box_y_start = torch.randint(0,h-50,((1)))
+            box_x_start = torch.randint(0,w-50,((1)))
+            input_img[:,box_y_start:box_y_start+50,box_x_start:box_x_start+50] = torch.rand(3,50,50)
+            
+            OOD_class = torch.zeros_like(label_img) #0 is in distribution
+            OOD_class[box_y_start:box_y_start+50,box_x_start:box_x_start+50] = 1
+
+            return input_img, label_img, OOD_class
+
+
+
+
+        return input_img, label_img, torch.zeros_like(label_img) #last output is only used as placeholder (0-class is in-distribution.)  
 
     def rotate_image(
         self, image: Image.Image, angle, flag=Image.BILINEAR
@@ -130,23 +148,49 @@ class KITTI_depth_dataset(Dataset):
     ):  # inspired by ZoeDepth (https://github.com/isl-org/ZoeDepth/blob/edb6daf45458569e24f50250ef1ed08c015f17a7/zoedepth/data/data_mono.py#L484)
         # gamma augmentation
         assert isinstance(image, torch.Tensor)
+        assert torch.min(image).item() < -0.05 #check to ensure normalization has been done.
+        #denormalize (necessary to exponentiate, as negative numbers are not allowed.):
+        mean = torch.Tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
+        std = torch.Tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+        if len(image.shape) == 3:
+            image = image * std + mean
+        else:
+            raise ValueError
+        
+        image= torch.clamp(image, 0, 1)
+
+
         gamma = random.uniform(0.9, 1.1)
         image_aug = image**gamma
 
         # brightness augmentation
         if self.cfg.dataset_params.name == "nyu":
             brightness = random.uniform(0.75, 1.25)
+            var_bright = 1/12*(1.25-0.75)**2
         else:
             brightness = random.uniform(0.9, 1.1)
+            var_bright = 1/12*(1.1-0.9)**2
         image_aug = image_aug * brightness
 
         # color augmentation
         colors = torch.rand(size=(3, 1, 1)) * 0.2 + 0.9  # 0.9-1.1
+        var_col = 1/12*(1.1-0.9)**2
         white = torch.ones((3, image.shape[1], image.shape[2]))
         color_image = colors * white
         image_aug *= color_image
         # image_aug = torch.clamp(image_aug, 0, 1)
-        return image_aug
+
+        var_aug = (var_bright+1)*(var_col+1)*((1.042017)*std**2+0.99964*mean**2)-1*1*(mean**2*0.99964) #variance of augmentation (apart from gamma)
+        #constants comes from sd of result of simulation of 10000 rnorm(0.4850,0.229) clamped at (0,1) gamma transformed by 10000 runif(0.9,1.1) variables, relative to moments of rnorm-variable)
+        #renormalize
+        if len(image_aug.shape) == 3:
+            out = (image_aug - mean)/(var_aug**(1/2))#make sure it is still whitened requires at dividing final variance by std_bright
+        else:
+            raise ValueError
+    
+
+        assert not ((torch.sum(torch.isnan(image))>0 ).item())
+        return out
 
     def __len__(self):
         return len(self.filenames)
@@ -181,7 +225,7 @@ class KITTIDataModule(pl.LightningDataModule):
     def prepare_data(self) -> None:
         print("setting up datamodule")
 
-    def setup(self, stage: str) -> None:
+    def setup(self, stage: str,**kwargs) -> None:
         print(stage)
         assert self.use_val_dir_for_val_and_test
         if stage == "fit":
@@ -191,6 +235,7 @@ class KITTIDataModule(pl.LightningDataModule):
                 transform=self.transform,
                 target_transform=self.target_transform,
                 cfg=self.cfg,
+                kwargs=kwargs,
             )
             if not self.cfg.dataset_params.test_set_is_actually_valset:
                 print("Currently testset is just valset without disturbing augmentations.")
@@ -201,6 +246,7 @@ class KITTIDataModule(pl.LightningDataModule):
                 transform=self.transform,
                 target_transform=self.target_transform,
                 cfg=self.cfg,
+                kwargs=kwargs,
             )
             print("got to evaluating KITTI train val set")
             self.KITTI_train_set = Subset(

@@ -104,10 +104,8 @@ class stochastic_unet(torch.nn.Module):
                 nnj.Conv2d(
                     int(multiplication_factor), multiplication_factor, 3, stride=1, padding=1
                 ),
-                Dropout(p=self.cfg.models.p_hidden_dropout),
                 nnj.Tanh(),
                 nnj.Conv2d(multiplication_factor, out_channels, 3, stride=1, padding=1),
-                Dropout(p=self.cfg.models.p_hidden_dropout),
             ]
         else:
             first_downblock = [
