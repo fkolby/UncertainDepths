@@ -1,4 +1,5 @@
 import argparse
+import gc
 import logging
 import os
 import pdb
@@ -16,18 +17,16 @@ from pytorch_lightning import callbacks
 from torch.nn import MSELoss
 from torchinfo import summary
 from torchvision import transforms
-import gc
 
 import wandb
 from src.data.datamodules import KITTIDataModule
 from src.models.evaluate_models import eval_model
+from src.models.lightning_modules.base import Base_module
 from src.models.loss import SILogLoss
 from src.models.modelImplementations.baseUNet import BaseUNet
 from src.models.modelImplementations.nnjUnet import stochastic_unet
 from src.utility.train_utils import seed_everything
 from src.utility.viz_utils import log_images, log_loss_metrics
-
-from src.models.lightning_modules.base import Base_module
 
 
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
@@ -57,8 +56,15 @@ def main(cfg: DictConfig):
         config=OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True),
     )
     wandb_run.log_code(
-    "~/UncertainDepths/src",
-    include_fn=lambda path: path.endswith(".py") and not(path.contains("/pytorch-laplace/") or path.contains("/nnj/") or path.contains("/wandb/") or  path.contains("cache/")))
+        "~/UncertainDepths/src",
+        include_fn=lambda path: path.endswith(".py")
+        and not (
+            path.contains("/pytorch-laplace/")
+            or path.contains("/nnj/")
+            or path.contains("/wandb/")
+            or path.contains("cache/")
+        ),
+    )
     logger = loggers.WandbLogger(project="UncertainDepths")
     log = logging.getLogger(__name__)
     log.info(OmegaConf.to_yaml(cfg))
@@ -102,7 +108,7 @@ def main(cfg: DictConfig):
             target_transform=target_transform,
             cfg=cfg,
         )
-        datamoduleEval.setup(stage="fit",dataset_type_is_ood =cfg.OOD.use_white_noise_box_test)
+        datamoduleEval.setup(stage="fit", dataset_type_is_ood=cfg.OOD.use_white_noise_box_test)
 
     elif cfg.models.model_type == "Ensemble":
         # Zoe does not want normalization (does it internally), Ensemble needs new seed for each run
@@ -112,7 +118,7 @@ def main(cfg: DictConfig):
             cfg=cfg,
         )
 
-        datamoduleEval.setup(stage="fit",dataset_type_is_ood =cfg.OOD.use_white_noise_box_test)
+        datamoduleEval.setup(stage="fit", dataset_type_is_ood=cfg.OOD.use_white_noise_box_test)
     else:
         datamoduleEval = KITTIDataModule(
             transform=transform,
@@ -120,7 +126,7 @@ def main(cfg: DictConfig):
             cfg=cfg,
         )
 
-        datamoduleEval.setup(stage="fit",dataset_type_is_ood =cfg.OOD.use_white_noise_box_test)
+        datamoduleEval.setup(stage="fit", dataset_type_is_ood=cfg.OOD.use_white_noise_box_test)
 
     # ================================ SET LOSS FUNC ======================================================
 
@@ -162,7 +168,6 @@ def main(cfg: DictConfig):
             del neuralnet
             gc.collect()
             torch.cuda.empty_cache()
-
 
             model = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
             model.load_state_dict(torch.load(f"{cfg.models.model_type}.pt"))
@@ -208,7 +213,7 @@ def main(cfg: DictConfig):
                     val_dataloaders=datamodule.test_dataloader(),
                 )
                 trainer.save_checkpoint(f"{cfg.models.model_type}.ckpt")
-                
+
                 # now we dont need (or want) lightning anymore
                 torch.save(
                     model._modules["model"].state_dict(),
@@ -267,7 +272,7 @@ def main(cfg: DictConfig):
                 model._modules["model"].state_dict(),
                 f"{cfg.models.model_type}.pt",
             )
-            #free up memory
+            # free up memory
             del trainer
             del model
             del datamodule
@@ -275,7 +280,7 @@ def main(cfg: DictConfig):
             gc.collect()
             torch.cuda.empty_cache()
 
-            #dont want/need lightning now
+            # dont want/need lightning now
             model = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
             model.load_state_dict(torch.load(f"{cfg.models.model_type}.pt"))
 
@@ -287,9 +292,6 @@ def main(cfg: DictConfig):
                     cfg=cfg,
                 )
             )
-            
-
-
 
         case "BaseUNet":
             raise NotImplementedError

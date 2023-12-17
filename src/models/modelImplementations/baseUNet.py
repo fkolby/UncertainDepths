@@ -1,8 +1,8 @@
 import torchview
+from omegaconf import OmegaConf
 
 import src.utility.train_utils as utils
 from src.utility.debug_utils import debugxshape, shape_and_print_tensor
-from omegaconf import OmegaConf
 
 
 @utils.retry(2)

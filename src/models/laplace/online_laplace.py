@@ -1,11 +1,11 @@
-from torch.nn.utils import parameters_to_vector, vector_to_parameters
-import torch
 import time
-from torch.nn import functional as F
 
+import torch
 from pytorch_laplace import MSEHessianCalculator
-from torch.nn import MSELoss
 from pytorch_laplace.laplace.diag import DiagLaplace
+from torch.nn import MSELoss
+from torch.nn import functional as F
+from torch.nn.utils import parameters_to_vector, vector_to_parameters
 
 
 class OnlineLaplace:

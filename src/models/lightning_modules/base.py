@@ -1,9 +1,10 @@
-import pytorch_lightning as pl
-import torch
-from torch import optim, nn
-import wandb
 import pdb
 
+import pytorch_lightning as pl
+import torch
+from torch import nn, optim
+
+import wandb
 from src.utility.viz_utils import log_images, log_loss_metrics
 
 
@@ -30,8 +31,7 @@ class Base_module(pl.LightningModule):
         return self.model(inputs)
 
     def training_step(self, batch, batch_idx):
-        x, y, _ = batch #third argument is only used during eval (OOD-classification)
-        
+        x, y, _ = batch  # third argument is only used during eval (OOD-classification)
 
         try:
             assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
@@ -77,7 +77,7 @@ class Base_module(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx):
-        x, y, _ = batch #third argument is only used during eval (OOD-classification)
+        x, y, _ = batch  # third argument is only used during eval (OOD-classification)
 
         assert (x[:, 0, :, :].shape == y[:, 0, :, :].shape) & (
             x[0, 0, :, :].shape == torch.Size((self.input_height, self.input_width))

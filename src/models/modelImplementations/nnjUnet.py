@@ -4,9 +4,9 @@ from typing import Literal, Union
 
 import torch
 import torchvision
+from omegaconf import OmegaConf
 from torch import Tensor, nn
 from torchinfo import summary
-from omegaconf import OmegaConf
 
 import nnj
 import src.utility.train_utils as utils

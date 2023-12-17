@@ -31,12 +31,14 @@ def get_intrinsics(H, W):
 def img_dicts():
     d = {"depth": [], "img": [], "preds": []}
     d = {"stochastic": deepcopy(d), "ZoeNK": deepcopy(d)}
-    path_to_pics = "/home/jbv415/UncertainDepths/src/models/outputs/images/10_12_2023_06_55_29_stochastic_unet"
+    path_to_pics = (
+        "/home/jbv415/UncertainDepths/src/models/outputs/images/10_12_2023_06_55_29_stochastic_unet"
+    )
     visuals = os.listdir(path_to_pics)
     visuals.sort()
     print(visuals)
     for el in visuals:
-        if el[-4:] != ".npy":# or len(el.split("_")) != 4:
+        if el[-4:] != ".npy":  # or len(el.split("_")) != 4:
             continue
         print(el)
         model = el.split("_")[2]
@@ -72,7 +74,7 @@ def img_dicts():
                 .squeeze()
                 .numpy(force=True)
             ]
-        
+
     return d
 
 
