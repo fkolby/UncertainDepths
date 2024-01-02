@@ -70,7 +70,12 @@ class Base_module(pl.LightningModule):
 
         if self.cfg.models.model_type == "Online_Laplace":
             if self.cfg.models.override_constant_hessian_memory_factor:
-                out_dict = self.Online_Laplace.step(img=x, depth=y, train=True, hessian_memory_factor = 1-self.lr_schedulers().get_last_lr()[0])
+                out_dict = self.Online_Laplace.step(
+                    img=x,
+                    depth=y,
+                    train=True,
+                    hessian_memory_factor=1 - self.lr_schedulers().get_last_lr()[0],
+                )
             else:
                 out_dict = self.Online_Laplace.step(img=x, depth=y, train=True)
             loss = out_dict["loss"]

@@ -10,9 +10,7 @@ import numpy as np
 
 
 class OnlineLaplace:
-    def __init__(
-        self, net, dataset_size, loss_function, cfg, device, **kwargs
-    ):
+    def __init__(self, net, dataset_size, loss_function, cfg, device, **kwargs):
         self.cfg = cfg
         self.net = net
         self.dataset_size = dataset_size
@@ -27,7 +25,7 @@ class OnlineLaplace:
         self.hessian = self.sampler.init_hessian(
             net=self.net, data_size=dataset_size, device=device
         )  # initializes the precision of n parameters at (\theta_1, \theta_2, ...,\theta_n) = dataset_size * (1,1,1,1,...,1)
-        
+
         self.sigma_n = 1.0  # ask about this parameter
         self.constant = 1 / (2 * self.sigma_n**2)  # and this
         self.time_forward = 0.0
@@ -46,8 +44,14 @@ class OnlineLaplace:
             raise (NotImplementedError)
 
     def step(self, img, depth, train=True, **kwargs):
+        hessian_memory_factor = kwargs.pop(
+            "hessian_memory_factor", self.cfg.models.hessian_memory_factor
+        )
 
-        hessian_memory_factor = kwargs.pop("hessian_memory_factor", self.cfg.models.hessian_memory_factor)
+        if (
+            self.cfg.models.update_hessian_probabilistically
+        ):  # if updating every 10th time, to ensure hessian mem factor is a bound on |theta_t-theta_t-10|, it must be 10*learning_rate.
+            hessian_memory_factor *= self.cfg.models.update_hessian_every
 
         total_time_start = time.time()
         sigma_q = self.sampler.posterior_scale(
@@ -105,11 +109,7 @@ class OnlineLaplace:
                 hessian=temp_hessians, constant=self.constant
             )  # mean(hessians)/constant #ask about this
             self.hessian_change_abs = torch.mean(
-                torch.abs(
-                    temp_hessian
-                    + hessian_memory_factor * self.hessian
-                    - self.hessian
-                )
+                torch.abs(temp_hessian + hessian_memory_factor * self.hessian - self.hessian)
             )
             self.hessian_change_signed = torch.mean(
                 temp_hessian + hessian_memory_factor * self.hessian - self.hessian
@@ -119,8 +119,12 @@ class OnlineLaplace:
             self.time_second_hess_start += time.time() - time_second_hess_start
         hessian_size = torch.mean(self.hessian)
         hessian_median = torch.median(self.hessian)
-        hessian_tenth_qt = torch.quantile(self.hessian, q=torch.tensor([0.10], device = self.hessian.device))
-        hessian_ninetieth_qt = torch.quantile(self.hessian, q=torch.tensor([0.90], device = self.hessian.device))
+        hessian_tenth_qt = torch.quantile(
+            self.hessian, q=torch.tensor([0.10], device=self.hessian.device)
+        )
+        hessian_ninetieth_qt = torch.quantile(
+            self.hessian, q=torch.tensor([0.90], device=self.hessian.device)
+        )
 
         self.time_hessian += time.time() - hess_time_start
         loss = loss_running_sum / self.n_samples * self.constant

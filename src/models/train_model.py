@@ -19,9 +19,9 @@ from torchinfo import summary
 from torchvision import transforms
 
 import wandb
-from src.data.datamodules import KITTIDataModule
+from src.data.datamodules.KITTI_datamodule import KITTI_datamodule
 from src.models.evaluate_models import eval_model
-from src.models.lightning_modules.base import Base_module
+from src.models.lightning_modules.base import Base_lightning_module
 from src.models.loss import SILogLoss
 from src.models.modelImplementations.baseUNet import BaseUNet
 from src.models.modelImplementations.nnjUnet import stochastic_unet
@@ -55,7 +55,12 @@ def main(cfg: DictConfig):
     wandb_run = wandb.init(
         project="UncertainDepths",
         config=OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True),
-        name=cfg.models.model_type + "_"  + "slurm_" + str(os.environ.get("SLURM_JOB_ID")) + "_" + datetime.now().strftime("%d_%m_%Y_%H"),
+        name=cfg.models.model_type
+        + "_"
+        + "slurm_"
+        + str(os.environ.get("SLURM_JOB_ID"))
+        + "_"
+        + datetime.now().strftime("%d_%m_%Y_%H"),
     )
     wandb_run.log_code(
         "~/UncertainDepths/src",
@@ -92,7 +97,7 @@ def main(cfg: DictConfig):
     if (
         cfg.models.model_type != "Ensemble"
     ):  # if ensemble we need to seed - and therefore instantiate dataloaders seperately (they should have different seed for every model)( Zoe does not use a training set)
-        datamodule = KITTIDataModule(
+        datamodule = KITTI_datamodule(
             transform=transform,
             target_transform=target_transform,
             cfg=cfg,
@@ -101,7 +106,7 @@ def main(cfg: DictConfig):
 
     if cfg.models.model_type == "ZoeNK":
         # no normalization, just straight up load in. (apart from center-crop and randomcrop)
-        datamoduleEval = KITTIDataModule(
+        datamoduleEval = KITTI_datamodule(
             transform=transforms.Compose(
                 [
                     transforms.PILToTensor(),
@@ -112,7 +117,7 @@ def main(cfg: DictConfig):
         )
         datamoduleEval.setup(stage="fit", dataset_type_is_ood=cfg.OOD.use_white_noise_box_test)
     else:
-        datamoduleEval = KITTIDataModule(
+        datamoduleEval = KITTI_datamodule(
             transform=transform,
             target_transform=target_transform,
             cfg=cfg,
@@ -133,7 +138,7 @@ def main(cfg: DictConfig):
             neuralnet = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
             summary(neuralnet, (1, 3, 352, 1216), depth=300)
 
-            model = Base_module(
+            model = Base_lightning_module(
                 model=neuralnet,
                 loss_function=loss_function,
                 cfg=cfg,
@@ -177,7 +182,7 @@ def main(cfg: DictConfig):
             neuralnet = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
             summary(neuralnet, (1, 3, 352, 1216), depth=300)
 
-            model = Base_module(
+            model = Base_lightning_module(
                 model=neuralnet,
                 loss_function=loss_function,
                 cfg=cfg,
@@ -227,7 +232,7 @@ def main(cfg: DictConfig):
             for i in range(cfg.models.n_models):
                 seed_everything(seeds[i])  # Seed both dataloaders and neural net initialization.
 
-                datamodule = KITTIDataModule(
+                datamodule = KITTI_datamodule(
                     transform=transform,
                     target_transform=target_transform,
                     cfg=cfg,
@@ -238,7 +243,7 @@ def main(cfg: DictConfig):
 
                 summary(neuralnet, (1, 3, 352, 1216), depth=300)
 
-                model = Base_module(
+                model = Base_lightning_module(
                     model=neuralnet,
                     loss_function=loss_function,
                     cfg=cfg,
@@ -292,7 +297,7 @@ def main(cfg: DictConfig):
             neuralnet = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
             summary(neuralnet, (1, 3, 352, 1216), depth=300)
 
-            model = Base_module(
+            model = Base_lightning_module(
                 model=neuralnet,
                 loss_function=loss_function,
                 cfg=cfg,
@@ -335,7 +340,7 @@ def main(cfg: DictConfig):
 
         case "BaseUNet":
             raise NotImplementedError
-            model = Base_module(
+            model = Base_lightning_module(
                 model=BaseUNet(in_channels=3, out_channels=1, cfg=cfg),
                 loss_function=loss_function,
                 cfg=cfg,
