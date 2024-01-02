@@ -1,6 +1,9 @@
 model_type: "Online_Laplace"
 n_models: 100
-train_samples: 1
+train_n_net_samples: 1
+update_hessian_every: 1
+update_hessian_probabilistically: True
+override_constant_hessian_memory_factor: True
 prior_prec: 1
 update_hession: True
 one_hessian_per_sampling : False

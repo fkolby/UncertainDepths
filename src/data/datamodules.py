@@ -43,9 +43,12 @@ class KITTI_depth_dataset(Dataset):
         self.train_or_test_transform = train_or_test_transform
         self.input_height = cfg.dataset_params.input_height
         self.input_width = cfg.dataset_params.input_width
-        print(kwargs)
         self.dataset_type_is_ood = kwargs.get("dataset_type_is_ood", False)
         self.cfg = cfg
+        print("Kwargs")
+        print(kwargs)
+        print(self.dataset_type_is_ood)
+        print(cfg.OOD.use_white_noise_box_test)
 
     def __getitem__(self, idx):
         sample_path = self.filenames[idx]
@@ -123,14 +126,23 @@ class KITTI_depth_dataset(Dataset):
         if self.dataset_type_is_ood and self.cfg.OOD.use_white_noise_box_test:
             c, h, w = input_img.shape
 
-            box_y_start = torch.randint(0, h - 50, ((1)))
-            box_x_start = torch.randint(0, w - 50, ((1)))
-            input_img[
-                :, box_y_start : box_y_start + 50, box_x_start : box_x_start + 50
-            ] = torch.rand(3, 50, 50)
+            box_y_offset = 100
+            box_x_offset = 100
 
-            OOD_class = torch.zeros_like(label_img)  # 0 is in distribution
-            OOD_class[box_y_start : box_y_start + 50, box_x_start : box_x_start + 50] = 1
+            box_y_start = np.random.randint(0, h - box_y_offset)
+            box_x_start = np.random.randint(0, w - 100)
+            input_img[
+                :,
+                box_y_start : box_y_start + box_y_offset,
+                box_x_start : box_x_start + box_x_offset,
+            ] = torch.rand(3, box_y_offset, box_x_offset)
+
+            OOD_class = torch.zeros_like(label_img, dtype=torch.int16)  # 0 is in distribution
+            OOD_class[
+                :,
+                box_y_start : box_y_start + box_y_offset,
+                box_x_start : box_x_start + box_x_offset,
+            ] = 1
 
             return input_img, label_img, OOD_class
 
@@ -242,7 +254,7 @@ class KITTIDataModule(pl.LightningDataModule):
                 transform=self.transform,
                 target_transform=self.target_transform,
                 cfg=self.cfg,
-                kwargs=kwargs,
+                **kwargs,
             )
             if not self.cfg.dataset_params.test_set_is_actually_valset:
                 print("Currently testset is just valset without disturbing augmentations.")
@@ -253,7 +265,7 @@ class KITTIDataModule(pl.LightningDataModule):
                 transform=self.transform,
                 target_transform=self.target_transform,
                 cfg=self.cfg,
-                kwargs=kwargs,
+                **kwargs,
             )
             print("got to evaluating KITTI train val set")
             self.KITTI_train_set = Subset(

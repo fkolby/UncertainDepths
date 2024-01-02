@@ -3,6 +3,7 @@ pdb_disabled: False
 save_images: False
 loss_function: "MSELoss"
 seed: 442
+slurm_id: 1
 eval_garg_crop: True
 eval_eigen_crop: False
 neural_net_param_multiplication_factor: 96
@@ -31,5 +32,5 @@ trainer_args:
 OOD:
   use_white_noise_box_test: True
 defaults: 
- - models: stochastic_unet
+ - models: Posthoc_Laplace
  - _self_

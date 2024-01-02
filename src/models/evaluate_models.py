@@ -12,8 +12,7 @@ import torchvision.transforms as transforms
 from PIL import Image
 from pytorch_laplace import MSEHessianCalculator
 from pytorch_laplace.laplace.diag import DiagLaplace
-from pytorch_laplace.optimization.prior_precision import \
-    optimize_prior_precision
+from pytorch_laplace.optimization.prior_precision import optimize_prior_precision
 from torchinfo import summary
 from tqdm import tqdm
 
@@ -32,6 +31,7 @@ def eval_model(
     dataloader_for_hessian=None,
     round_vals=True,
     round_precision=3,
+    **kwargs,
 ):
     metrics = RunningAverageDict()
     if torch.cuda.is_available():
@@ -43,7 +43,7 @@ def eval_model(
         datetime.now().strftime("%d_%m_%Y_%H_%M_%S") + "_" + cfg.models.model_type
     )
     i = 0
-    if cfg.models.model_type == "stochastic_unet":
+    if cfg.models.model_type == "Posthoc_Laplace":
         hessian_calculator = MSEHessianCalculator(
             hessian_shape="diag", approximation_accuracy="approx"
         )
@@ -63,6 +63,17 @@ def eval_model(
                 break
 
         print("Done calcing hessian")
+        mean_parameter = torch.nn.utils.parameters_to_vector(model.parameters())
+        with torch.enable_grad():
+            prior_precision = optimize_prior_precision(
+                mu_q=mean_parameter,
+                hessian=hessian,
+                prior_prec=torch.tensor([1.0], device=device),
+                n_steps=500,
+            )
+        print(f"prior precision: {prior_precision}")
+    if cfg.models.model_type == "Online_Laplace":
+        hessian = kwargs.pop("online_hessian")
         mean_parameter = torch.nn.utils.parameters_to_vector(model.parameters())
         with torch.enable_grad():
             prior_precision = optimize_prior_precision(
@@ -100,7 +111,22 @@ def eval_model(
         depths = depths.to(device="cpu")  # BxCxHxW
 
         match cfg.models.model_type:
-            case "stochastic_unet":
+            case "Posthoc_Laplace":
+                preds, uncertainty = laplace.laplace(
+                    x=images,
+                    model=model,
+                    hessian=hessian,
+                    prior_prec=prior_precision,
+                    n_samples=cfg.models.n_models,
+                )  ###NOTE TO SELF: MUST BE NON-flipped for other models as well
+                preds = preds.detach().to("cpu")
+                uncertainty = uncertainty.to("cpu")
+                print("shapes:", preds.shape, uncertainty.shape)
+                print(uncertainty)
+                print(uncertainty[0, :, :, :])
+                # dimensions: BatchxColorxHxW (no model-dim.)
+            case "Online_Laplace":
+                laplace = DiagLaplace()
                 preds, uncertainty = laplace.laplace(
                     x=images,
                     model=model,
@@ -179,9 +205,10 @@ def eval_model(
                 image = images[j, :, :, :]
                 depth = depths[j, :, :, :]
 
-                if (
-                    cfg.models.model_type != "stochastic_unet"
-                ):  # then collapse on different predictions.
+                if cfg.models.model_type not in [
+                    "Posthoc_Laplace",
+                    "Online_Laplace",
+                ]:  # then collapse on different predictions.
                     pred = torch.mean(
                         preds[:, j, :, :, :], dim=0
                     )  # pred is average prediction, preds ModelxBatchxColorxHxW
@@ -300,9 +327,10 @@ def eval_model(
                     step=(j + 1) * 5000000,
                 )
 
-        if (
-            cfg.models.model_type != "stochastic_unet"
-        ):  # then collapse on different predictions by each model.
+        if cfg.models.model_type not in [
+            "Posthoc_Laplace",
+            "Online_Laplace",
+        ]:  # then collapse on different predictions by each model.
             pred = torch.mean(preds, dim=0)
 
             uncertainty = torch.var(preds, dim=0).sqrt()
@@ -319,11 +347,27 @@ def eval_model(
             # in that case we should sort by class, so see whether uncertainties are higher on OOD.
 
             # Obtain indices for valid uncertainty estimates (e.g depth within 0-80 meters (based on ground truth - which is not masked by white noise - so e.g. a white-noise box placed in sky would not be counted here (as depth>80 m))).
+            print(
+                "OOD:",
+                np.mean(OOD_class.numpy()),
+                OOD_class.shape,
+                OOD_class[OOD_class == 0].shape,
+                OOD_class[OOD_class == 1].shape,
+                flush=True,
+            )
             _, _, uncertainty_whitenoise = filter_valid(
                 gt=depths, pred=OOD_class, uncertainty=uncertainty, config=cfg
             )  # hacky way of obtaining valid pixels for OOD-class - we only filter on depths (ground truth)
             _, OOD_class, scaled_uncertainty_whitenoise = filter_valid(
                 gt=depths, pred=OOD_class, uncertainty=scaled_uncertainty_uncolored, config=cfg
+            )
+            print(
+                "OOD:",
+                np.mean(OOD_class.numpy()),
+                OOD_class.shape,
+                OOD_class[OOD_class == 0].shape,
+                OOD_class[OOD_class == 1].shape,
+                flush=True,
             )
 
             # aggregate white noise estimates.

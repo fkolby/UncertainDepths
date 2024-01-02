@@ -40,7 +40,7 @@ def filter_valid(
     pred[np.isnan(pred)] = min_depth_eval
 
     gt_depth = gt.cpu()
-    valid_mask = np.logical_and(gt_depth > min_depth_eval, gt_depth < max_depth_eval)
+    valid_mask = np.logical_and(gt_depth >= min_depth_eval, gt_depth <= max_depth_eval)
     if garg_crop or eigen_crop:
         _, _, gt_height, gt_width = gt_depth.shape
         eval_mask = np.zeros(valid_mask.shape)

@@ -27,6 +27,7 @@ from src.models.modelImplementations.baseUNet import BaseUNet
 from src.models.modelImplementations.nnjUnet import stochastic_unet
 from src.utility.train_utils import seed_everything
 from src.utility.viz_utils import log_images, log_loss_metrics
+from datetime import datetime
 
 
 @hydra.main(version_base=None, config_path="../conf", config_name="config")
@@ -54,6 +55,7 @@ def main(cfg: DictConfig):
     wandb_run = wandb.init(
         project="UncertainDepths",
         config=OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True),
+        name=cfg.models.model_type + "_"  + "slurm_" + str(os.environ.get("SLURM_JOB_ID")) + "_" + datetime.now().strftime("%d_%m_%Y_%H"),
     )
     wandb_run.log_code(
         "~/UncertainDepths/src",
@@ -109,16 +111,6 @@ def main(cfg: DictConfig):
             cfg=cfg,
         )
         datamoduleEval.setup(stage="fit", dataset_type_is_ood=cfg.OOD.use_white_noise_box_test)
-
-    elif cfg.models.model_type == "Ensemble":
-        # Zoe does not want normalization (does it internally), Ensemble needs new seed for each run
-        datamoduleEval = KITTIDataModule(
-            transform=transform,
-            target_transform=target_transform,
-            cfg=cfg,
-        )
-
-        datamoduleEval.setup(stage="fit", dataset_type_is_ood=cfg.OOD.use_white_noise_box_test)
     else:
         datamoduleEval = KITTIDataModule(
             transform=transform,
@@ -137,7 +129,7 @@ def main(cfg: DictConfig):
 
     # ================================ TRAIN & EVAL ========================================================
     match cfg.models.model_type:
-        case "stochastic_unet":
+        case "Posthoc_Laplace":
             neuralnet = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
             summary(neuralnet, (1, 3, 352, 1216), depth=300)
 
@@ -181,11 +173,59 @@ def main(cfg: DictConfig):
                     cfg=cfg,
                 )
             )
+        case "Online_Laplace":
+            neuralnet = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
+            summary(neuralnet, (1, 3, 352, 1216), depth=300)
+
+            model = Base_module(
+                model=neuralnet,
+                loss_function=loss_function,
+                cfg=cfg,
+                steps_per_epoch=len(datamodule.train_dataloader()),
+                dataset_size=datamodule.train_dataloader().dataset.__len__(),
+            )
+
+            trainer = pl.Trainer(logger=logger, **trainer_args)
+
+            trainer.fit(
+                model=model,
+                train_dataloaders=datamodule.train_dataloader(),
+                val_dataloaders=datamodule.test_dataloader(),
+            )
+            trainer.save_checkpoint(f"{cfg.models.model_type}.ckpt")
+            # now we dont need (or want) lightning anymore
+            torch.save(
+                model._modules["model"].state_dict(),
+                f"{cfg.models.model_type}.pt",
+            )
+            print(type(trainer.model.Online_Laplace))
+            trainer.model.Online_Laplace.save_hessian(f"{cfg.models.model_type}_hessian.pt")
+            ## free up memory again
+            del trainer
+            del model
+            del datamodule
+            del neuralnet
+            gc.collect()
+            torch.cuda.empty_cache()
+
+            model = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
+            model.load_state_dict(torch.load(f"{cfg.models.model_type}.pt"))
+
+            model.eval().to("cuda")
+            pprint(
+                eval_model(
+                    model=model,
+                    test_loader=datamoduleEval.test_dataloader(),
+                    dataloader_for_hessian=datamoduleEval.train_dataloader(),
+                    cfg=cfg,
+                    online_hessian=torch.load(f"{cfg.models.model_type}_hessian.pt"),
+                )
+            )
         case "Ensemble":
+            seed_everything(cfg.seed)
+            seeds = [np.random.randint(0, 10000) for i in range(cfg.models.n_models)]
             for i in range(cfg.models.n_models):
-                seed_everything(
-                    cfg.seed + i
-                )  # Seed both dataloaders and neural net initialization.
+                seed_everything(seeds[i])  # Seed both dataloaders and neural net initialization.
 
                 datamodule = KITTIDataModule(
                     transform=transform,
