@@ -92,6 +92,7 @@ target/
 
 # no large files
 *.ckpt
+*.pt
 
 
 #no slurm output
@@ -107,5 +108,8 @@ wandb/
 /src/wandb/
 /src/outputs/
 /src/models/outputs/ 
+
+#no pytorch-laplace
+/src/pytorch-laplace/
 
 
