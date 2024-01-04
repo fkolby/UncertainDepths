@@ -40,7 +40,7 @@ def eval_model(
         device = "cpu"
 
     date_and_time_and_model = (
-        datetime.now().strftime("%d_%m_%Y_%H_%M_%S") + "_" + cfg.models.model_type
+        datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + "_" + str(os.environ.get("SLURM_JOB_ID")) +  "_" + cfg.models.model_type
     )
     i = 0
     if cfg.models.model_type == "Posthoc_Laplace":
@@ -68,7 +68,7 @@ def eval_model(
             prior_precision = optimize_prior_precision(
                 mu_q=mean_parameter,
                 hessian=hessian,
-                prior_prec=torch.tensor([1.0], device=device),
+                prior_prec=torch.tensor([float(cfg.models.prior_prec)], device=device),
                 n_steps=500,
             )
         print(f"prior precision: {prior_precision}")
@@ -79,7 +79,7 @@ def eval_model(
             prior_precision = optimize_prior_precision(
                 mu_q=mean_parameter,
                 hessian=hessian,
-                prior_prec=torch.tensor([1.0], device=device),
+                prior_prec=torch.tensor([float(cfg.models.prior_prec)], device=device),
                 n_steps=500,
             )
         print(f"prior precision: {prior_precision}")
@@ -543,7 +543,7 @@ def eval_model(
         ),
     )
     save_uncertainty_plots(
-        uncertainty_df,
+        scaled_uncertainty_df,
         os.path.join(
             cfg.save_images_path,
             "plots/",

@@ -51,7 +51,8 @@ class OnlineLaplace:
         if (
             self.cfg.models.update_hessian_probabilistically
         ):  # if updating every 10th time, to ensure hessian mem factor is a bound on |theta_t-theta_t-10|, it must be 10*learning_rate.
-            hessian_memory_factor *= self.cfg.models.update_hessian_every
+            alpha = 1-hessian_memory_factor
+            hessian_memory_factor = 1-self.cfg.models.update_hessian_every*alpha
 
         total_time_start = time.time()
         sigma_q = self.sampler.posterior_scale(
@@ -85,25 +86,25 @@ class OnlineLaplace:
             hess_time_start = time.time()
 
             if train:
-                if not self.cfg.models.update_hessian_probabilistically or np.random.rand() <= (
-                    1 / self.cfg.models.update_hessian_every
-                ):
+                update_this_step =  (np.random.rand() <= (1 / self.cfg.models.update_hessian_every))
+                if not self.cfg.models.update_hessian_probabilistically or update_this_step:
                     expected_tough_calc = time.time()
                     temp_hess = self.hessian_calculator.compute_hessian(
                         x=img, model=self.net, target=depth
                     )
                     self.time_expected_tough_calc += time.time() - expected_tough_calc
-                time_append_start = time.time()
-                temp_hess = self.sampler.scale(
+                    temp_hessians.append(temp_hess)
+                    temp_hess = self.sampler.scale(
                     hessian_batch=temp_hess, batch_size=img.shape[0], data_size=self.dataset_size
-                )  # temp_hess*dataset_size/batchsize # ask about this
-                temp_hessians.append(temp_hess)
+                    )  # temp_hess*dataset_size/batchsize # ask about this
+                time_append_start = time.time()
+                
                 self.time_append += time.time() - time_append_start
 
             self.time_hessian += time.time() - hess_time_start
 
         hess_time_start = time.time()
-        if train:
+        if train and update_this_step:
             time_second_hess_start = time.time()
             temp_hessian = self.sampler.average_hessian_samples(
                 hessian=temp_hessians, constant=self.constant
@@ -114,9 +115,11 @@ class OnlineLaplace:
             self.hessian_change_signed = torch.mean(
                 temp_hessian + hessian_memory_factor * self.hessian - self.hessian
             )
-
             self.hessian = temp_hessian + hessian_memory_factor * self.hessian
             self.time_second_hess_start += time.time() - time_second_hess_start
+        else:
+            self.hessian_change_abs = torch.zeros_like(mu_q)
+            self.change_signed= torch.zeros_like(mu_q)
         hessian_size = torch.mean(self.hessian)
         hessian_median = torch.median(self.hessian)
         hessian_tenth_qt = torch.quantile(

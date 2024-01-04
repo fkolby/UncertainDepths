@@ -29,6 +29,12 @@ class base_datamodule(pl.LightningDataModule):
         self.input_width = cfg.dataset_params.input_width
         self.cfg = cfg
 
+        self.val_set = None
+        self.train_set = None
+        self.test_set = None
+        self.predict_set = None
+
+
     def setup(self, stage: str, **kwargs) -> None:
         raise NotImplementedError
 

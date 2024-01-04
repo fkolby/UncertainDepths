@@ -170,13 +170,13 @@ def main(cfg: DictConfig):
             model.load_state_dict(torch.load(f"{cfg.models.model_type}.pt"))
 
             model.eval().to("cuda")
-            pprint(
+            wandb.log(
                 eval_model(
                     model=model,
                     test_loader=datamoduleEval.test_dataloader(),
                     dataloader_for_hessian=datamoduleEval.train_dataloader(),
                     cfg=cfg,
-                )
+                ), step=50000
             )
         case "Online_Laplace":
             neuralnet = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
@@ -217,7 +217,7 @@ def main(cfg: DictConfig):
             model.load_state_dict(torch.load(f"{cfg.models.model_type}.pt"))
 
             model.eval().to("cuda")
-            pprint(
+            wandb.log(
                 eval_model(
                     model=model,
                     test_loader=datamoduleEval.test_dataloader(),
@@ -225,7 +225,8 @@ def main(cfg: DictConfig):
                     cfg=cfg,
                     online_hessian=torch.load(f"{cfg.models.model_type}_hessian.pt"),
                 )
-            )
+                , step = 500000)
+            
         case "Ensemble":
             seed_everything(cfg.seed)
             seeds = [np.random.randint(0, 10000) for i in range(cfg.models.n_models)]
@@ -285,12 +286,13 @@ def main(cfg: DictConfig):
             model.load_state_dict(torch.load(f"{cfg.models.model_type}_0.pt"))
 
             model.eval().to("cuda")
-            pprint(
+            wandb.log(
                 eval_model(
                     model=model,
                     test_loader=datamoduleEval.test_dataloader(),
                     cfg=cfg,
-                )
+                
+                ), step=50000
             )
 
         case "Dropout":  # main difference to laplace posthoc is the fact that we do not put module into eval mode.
@@ -330,12 +332,12 @@ def main(cfg: DictConfig):
             model.load_state_dict(torch.load(f"{cfg.models.model_type}.pt"))
 
             model.to("cuda")
-            pprint(
+            wandb.log(
                 eval_model(
                     model=model,
                     test_loader=datamoduleEval.test_dataloader(),
                     cfg=cfg,
-                )
+                ), step=50000
             )
 
         case "BaseUNet":
@@ -364,25 +366,26 @@ def main(cfg: DictConfig):
             model.load_state_dict(torch.load(f"{cfg.models.model_type}.pt"))
 
             model.eval().to("cuda")
-            pprint(
+            wandb.log(
                 eval_model(
                     model=model,
                     model_name="Unet",
                     test_loader=datamoduleEval.test_dataloader(),
                     cfg=cfg,
-                )
+                ), step=50000
             )
         case "ZoeNK":
             repo = "isl-org/ZoeDepth"
             ZoeNK = torch.hub.load(repo, "ZoeD_NK", pretrained=True).eval().to("cuda")
             print("now it errors")
-            pprint(
+            wandb.log(
                 eval_model(
                     model=ZoeNK,
                     model_name="ZoeNK",
                     test_loader=datamoduleEval.test_dataloader(),
                     cfg=cfg,
                 )
+                ,step = 500000
             )
 
 

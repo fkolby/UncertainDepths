@@ -10,7 +10,7 @@ from src.utility.viz_utils import log_images, log_loss_metrics
 from src.models.laplace.online_laplace import OnlineLaplace
 
 
-class Base_module(pl.LightningModule):
+class Base_lightning_module(pl.LightningModule):
     def __init__(
         self,
         model,

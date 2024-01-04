@@ -9,12 +9,8 @@ class KITTI_datamodule(base_datamodule):
         self.data_dir = kwargs.pop(
             "data_dir", "/home/frederik/UncertainDepths/data/external/KITTI/"
         )
-        super.__init__(*args, **kwargs)
-        self.KITTI_val_set = None
-        self.KITTI_train_set = None
-        self.KITTI_test_set = None
-        self.KITTI_predict_set = None
-
+        super().__init__(*args, **kwargs)
+        
     def setup(self, stage: str, **kwargs) -> None:
         print(stage)
         assert self.use_val_dir_for_val_and_test

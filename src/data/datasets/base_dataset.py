@@ -1,3 +1,10 @@
+from torch.utils.data import Dataset
+from PIL import Image
+from numpy import random
+import numpy as np
+import torch
+from omegaconf import DictConfig, OmegaConf
+
 class depth_dataset(Dataset):
     def __init__(
         self,
@@ -10,11 +17,7 @@ class depth_dataset(Dataset):
     ) -> None:
         self.transform = transform
         self.target_transform = target_transform
-        if train_or_test in ["train", "test"]:
-            with open(self.path_to_file, "r") as f:
-                self.filenames = f.readlines()
-        else:
-            Exception("Not implemented non-train/test for choosing files yet")
+
         self.train_or_test = train_or_test
         self.train_or_test_transform = train_or_test_transform
         self.input_height = cfg.dataset_params.input_height
