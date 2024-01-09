@@ -74,10 +74,14 @@ class Base_lightning_module(pl.LightningModule):
                     img=x,
                     depth=y,
                     train=True,
-                    hessian_memory_factor=1 - self.lr_schedulers().get_last_lr()[0],
+                    hessian_memory_factor=1-self.lr_schedulers().get_last_lr()[0]#5*(1 - self.cfg.models.hessian_memory_factor)*self.lr_schedulers().get_last_lr()[0]/self.cfg.hyperparameters.learning_rate,
+                    #self.lr_schedulers().get_last_lr()[0]#lr_#1*(1 - self.cfg.models.hessian_memory_factor)*self.lr_schedulers().get_last_lr()[0]/self.cfg.learning_rate,
+                    ,
+                    epoch = self._trainer.current_epoch,
+
                 )
             else:
-                out_dict = self.Online_Laplace.step(img=x, depth=y, train=True)
+                out_dict = self.Online_Laplace.step(img=x, depth=y, train=True ,epoch = self._trainer.current_epoch,)
             loss = out_dict["loss"]
             preds = out_dict["preds"]
             variance = out_dict["variance"]
@@ -146,7 +150,7 @@ class Base_lightning_module(pl.LightningModule):
         )  # perhaps also punish above maxdepth during training?
 
         if self.cfg.models.model_type == "Online_Laplace":
-            out_dict = self.Online_Laplace.step(img=x, depth=y, train=False)
+            out_dict = self.Online_Laplace.step(img=x, depth=y, train=False, epoch = self._trainer.current_epoch)
             loss = out_dict["loss"]
             preds = out_dict["preds"]
             variance = out_dict["variance"]

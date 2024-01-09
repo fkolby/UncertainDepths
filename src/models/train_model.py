@@ -105,6 +105,7 @@ def main(cfg: DictConfig):
         datamodule.setup(stage="fit")
 
     if cfg.models.model_type == "ZoeNK":
+        seed_everything(cfg.seed)
         # no normalization, just straight up load in. (apart from center-crop and randomcrop)
         datamoduleEval = KITTI_datamodule(
             transform=transforms.Compose(
@@ -117,6 +118,7 @@ def main(cfg: DictConfig):
         )
         datamoduleEval.setup(stage="fit", dataset_type_is_ood=cfg.OOD.use_white_noise_box_test)
     else:
+        seed_everything(cfg.seed)
         datamoduleEval = KITTI_datamodule(
             transform=transform,
             target_transform=target_transform,
@@ -150,7 +152,7 @@ def main(cfg: DictConfig):
             trainer.fit(
                 model=model,
                 train_dataloaders=datamodule.train_dataloader(),
-                val_dataloaders=datamodule.test_dataloader(),
+                val_dataloaders=datamodule.val_dataloader(),
             )
             trainer.save_checkpoint(f"{cfg.models.model_type}.ckpt")
             # now we dont need (or want) lightning anymore
@@ -195,7 +197,7 @@ def main(cfg: DictConfig):
             trainer.fit(
                 model=model,
                 train_dataloaders=datamodule.train_dataloader(),
-                val_dataloaders=datamodule.test_dataloader(),
+                val_dataloaders=datamodule.val_dataloader(),
             )
             trainer.save_checkpoint(f"{cfg.models.model_type}.ckpt")
             # now we dont need (or want) lightning anymore
@@ -256,7 +258,7 @@ def main(cfg: DictConfig):
                 trainer.fit(
                     model=model,
                     train_dataloaders=datamodule.train_dataloader(),
-                    val_dataloaders=datamodule.test_dataloader(),
+                    val_dataloaders=datamodule.val_dataloader(),
                 )
                 trainer.save_checkpoint(f"{cfg.models.model_type}.ckpt")
 

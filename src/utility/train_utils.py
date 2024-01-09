@@ -66,3 +66,4 @@ def random_crop(img, depth, height, width):
     img = img[:, y : y + height, x : x + width]
     depth = depth[:, y : y + height, x : x + width]
     return img, depth
+

@@ -21,6 +21,7 @@ from src.utility.debug_utils import time_since_previous_log
 from src.utility.eval_utils import calc_loss_metrics, filter_valid
 from src.utility.other_utils import RunningAverageDict
 from src.utility.viz_utils import colorize, denormalize, log_images
+from src.utility.train_utils import seed_everything
 
 
 @torch.no_grad()
@@ -97,6 +98,7 @@ def eval_model(
         uncertainty_out_of_distribution = torch.Tensor().to(device="cpu")
         scaled_uncertainty_in_distribution = torch.Tensor().to(device="cpu")
         scaled_uncertainty_out_of_distribution = torch.Tensor().to(device="cpu")
+    seed_everything(cfg.seed)
 
     for i, sample in enumerate(tqdm(test_loader, total=len(test_loader))):
         if i > 50 and cfg.in_debug:  # skip if too long.
@@ -177,6 +179,13 @@ def eval_model(
                     )  # unsqueeze to have a model-dimension (first) - move to cpu to free memory on gpu
 
             case "ZoeNK":
+                print((
+                        cfg.models.n_models,
+                        depths.shape[0],
+                        depths.shape[1],
+                        cfg.dataset_params.input_height,
+                        cfg.dataset_params.input_width,
+                    ))
                 preds = torch.zeros(
                     size=(
                         cfg.models.n_models,
@@ -186,13 +195,13 @@ def eval_model(
                         cfg.dataset_params.input_width,
                     ),
                     device="cpu",
-                )  # dimensions: model, batch, color, height, width.
-                print(preds.shape)
+                ) # dimensions: model, batch, color, height, width.
                 for j in range(cfg.models.n_models):
+                    print(model(images))
                     preds[j, :, :, :, :] = torch.unsqueeze(
                         torchvision.transforms.Resize(
                             (cfg.dataset_params.input_height, cfg.dataset_params.input_width)
-                        )(model(images)),
+                        )(model(images)["metric_depth"] ),
                         dim=0,
                     ).to(
                         device="cpu"
@@ -258,7 +267,7 @@ def eval_model(
                 if cfg.models.model_type == "ZoeNK":
                     im = transforms.ToPILImage()(
                         image
-                    ).cpu()  # dont denormalize; it is the original image.
+                    )  # dont denormalize; it is the original image.
                 else:
                     im = transforms.ToPILImage()(denormalize(image).cpu())
                 print(type(d))
@@ -294,8 +303,8 @@ def eval_model(
                     "img": image,
                     "depth": depth,
                     "preds": pred,
-                    "std_dev": std_dev,
-                    "ScaledUncertainty": scaled_uncertainty_uncolored,
+                    "std_dev": sd,
+                    "ScaledUncertainty": scaled_uncertainty,
                 }.items():
                     if key == "img":
                         np.save(
@@ -340,9 +349,7 @@ def eval_model(
 
         scaled_uncertainty_uncolored = uncertainty / pred
 
-        print(depths.shape, pred.shape, uncertainty.shape)
-        print(depths.shape, OOD_class.shape, uncertainty.shape)
-        print(depths.shape, OOD_class.shape, scaled_uncertainty_uncolored.shape)
+        print(depths.shape, pred.shape,OOD_class.shape, image.shape,sd.shape, uncertainty.shape)
         if cfg.OOD.use_white_noise_box_test:
             # in that case we should sort by class, so see whether uncertainties are higher on OOD.
 
@@ -564,4 +571,32 @@ def eval_model(
             return m
 
     metrics = {k: r(v) for k, v in metrics.get_value().items()}
+    
+    save_metrics= {k: [v.numpy(force=True)] for k,v in metrics.items()}
+    file_name = os.path.join(cfg.save_images_path, cfg.results_df_prefix + "output_results.csv")
+    try:
+        results_df = pd.read_csv(file_name)
+        out_df = pd.DataFrame(data = save_metrics)
+         
+        out_df["uncertainty_in_dist"] = uncertainty_in_distribution.mean(),
+        out_df["uncertainty_out_of_dist"] = uncertainty_out_of_distribution.mean(),
+        out_df["scaled_uncertainty_in_dist"] = scaled_uncertainty_in_distribution.mean(),
+        out_df["scaled_uncertainty_out_of_dist"] = scaled_uncertainty_out_of_distribution.mean(),
+        out_df["model_type"] = cfg.models.model_type
+        out_df["identification"] = "_".join(date_and_time_and_model.split("_")[:-1])
+        pd.concat([out_df, results_df]).to_csv(file_name, index=False)
+    except FileNotFoundError:
+        out_df = pd.DataFrame(data = save_metrics)
+        out_df["model_type"] = cfg.models.model_type
+        
+        out_df["uncertainty_in_dist"] = uncertainty_in_distribution.mean(),
+        out_df["uncertainty_out_of_dist"] = uncertainty_out_of_distribution.mean(),
+        out_df["scaled_uncertainty_in_dist"] = scaled_uncertainty_in_distribution.mean(),
+        out_df["scaled_uncertainty_out_of_dist"] = scaled_uncertainty_out_of_distribution.mean(),
+        out_df["identification"] = "_".join(date_and_time_and_model.split("_")[:-1])
+        out_df.to_csv(file_name, index=False)
+        
+
+
+
     return metrics

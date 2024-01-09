@@ -23,7 +23,7 @@ class OnlineLaplace:
         self.n_samples = cfg.models.train_n_net_samples
         self.sampler = OnlineDiagLaplace()
         self.hessian = self.sampler.init_hessian(
-            net=self.net, data_size=dataset_size, device=device
+            net=self.net, data_size=dataset_size*cfg.models.hessian_initial_multiplication_factor, device=device
         )  # initializes the precision of n parameters at (\theta_1, \theta_2, ...,\theta_n) = dataset_size * (1,1,1,1,...,1)
 
         self.sigma_n = 1.0  # ask about this parameter
@@ -43,10 +43,11 @@ class OnlineLaplace:
             print("Hessian calc and loss function are not referring to same loss type")
             raise (NotImplementedError)
 
-    def step(self, img, depth, train=True, **kwargs):
+    def step(self, img, depth, epoch, train=True, **kwargs):
         hessian_memory_factor = kwargs.pop(
             "hessian_memory_factor", self.cfg.models.hessian_memory_factor
         )
+
 
         if (
             self.cfg.models.update_hessian_probabilistically
@@ -60,10 +61,16 @@ class OnlineLaplace:
         )
         mu_q = parameters_to_vector(self.net.parameters())
 
-        net_samples = self.sampler.sample_from_normal(
-            mu=mu_q, scale=sigma_q, n_samples=self.n_samples
-        )
+        if self.cfg.models.dont_sample_parameters_during_training and train:
+            net_samples = mu_q
 
+        elif (self.cfg.trainer_args.max_epochs - (epoch+1) >= self.cfg.models.sample_last_n_epochs) or not train:
+            net_samples = self.sampler.sample_from_normal(
+                mu=mu_q, scale=sigma_q, n_samples=self.n_samples
+            )
+        else:
+            net_samples =  mu_q       
+            
         loss_running_sum = 0
 
         mask = mask = torch.logical_and(

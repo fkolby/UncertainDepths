@@ -8,6 +8,8 @@ prior_prec: 1
 update_hession: True
 one_hessian_per_sampling : False
 hessian_memory_factor: 0.999
-use_learning_rate_for_memory_factor: True
 hessian_scale: 1
 weight_reg_factor: 0
+hessian_initial_multiplication_factor: 1
+dont_sample_parameters_during_training: False
+sample_last_n_epochs: 5
