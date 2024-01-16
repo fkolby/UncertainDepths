@@ -30,20 +30,20 @@ def get_intrinsics(H, W):
 
 
 def img_dicts(picture_folders: [str]):
-    d = {"depth": [], "img": [], "preds": [], "ScaledUncertainty":[], "std_dev": []}
-    d = {"Posthoc_Laplace": deepcopy(d),
-         "Online_Laplace": deepcopy(d),
-         "Ensemble": deepcopy(d),
-         "Dropout": deepcopy(d),
-          "ZoeNK": deepcopy(d)}
-    
-    path_to_folder = (
-        "/home/jbv415/UncertainDepths/src/models/outputs/images/"
-    )
+    d = {"depth": [], "img": [], "preds": [], "ScaledUncertainty": [], "std_dev": []}
+    d = {
+        "Posthoc_Laplace": deepcopy(d),
+        "Online_Laplace": deepcopy(d),
+        "Ensemble": deepcopy(d),
+        "Dropout": deepcopy(d),
+        "ZoeNK": deepcopy(d),
+    }
+
+    path_to_folder = "/home/jbv415/UncertainDepths/src/models/outputs/images/"
 
     for picfold in picture_folders:
         path_to_pics = os.path.join(path_to_folder, picfold)
-        
+
         visuals = os.listdir(path_to_pics)
         visuals.sort()
         print(visuals)
@@ -51,36 +51,34 @@ def img_dicts(picture_folders: [str]):
             if el[-4:] != ".npy":  # or len(el.split("_")) != 4:
                 continue
             print(el)
-            
+
             idx_inc = 0
             im_type = el.split("_")[1]
-            if im_type=="std":
+            if im_type == "std":
                 im_type = "std_dev"
                 idx_inc = 1
-                
 
             model = el.split("_")[2 + idx_inc]
-            if model == "Posthoc" or model =="Online":
-                #then it looks like "np_imtype_Posthoc_laplace_imnum.npy"
-                model = "_".join(el.split("_")[2 + idx_inc:4 + idx_inc])
+            if model == "Posthoc" or model == "Online":
+                # then it looks like "np_imtype_Posthoc_laplace_imnum.npy"
+                model = "_".join(el.split("_")[2 + idx_inc : 4 + idx_inc])
             print(model)
             print(im_type)
             print(el)
             print(torch.tensor(np.load(os.path.join(path_to_pics, el))).shape)
-            if im_type == "img":                
-                print( torch.tensor(np.load(os.path.join(path_to_pics, el))).shape)
+            if im_type == "img":
+                print(torch.tensor(np.load(os.path.join(path_to_pics, el))).shape)
                 if model == "ZoeNK":
                     d[model][im_type] = d[model][im_type] + [
                         Resize((352, 704))(
-                            torch.tensor(np.load(os.path.join(path_to_pics, el))) /100.0 
+                            torch.tensor(np.load(os.path.join(path_to_pics, el))) / 100.0
                         ).numpy(force=True)
                     ]
                 else:
                     d[model][im_type] = d[model][im_type] + [
                         Resize((352, 704))(
-                            torch.tensor(np.load(os.path.join(path_to_pics, el)))).numpy(
-                            force=True
-                        )
+                            torch.tensor(np.load(os.path.join(path_to_pics, el)))
+                        ).numpy(force=True)
                     ]
                 """ elif im_type == "depth":  # Resize, so preds/depths_dict can be color-corrected
                 d[model][im_type] = d[model][im_type] + [
@@ -90,30 +88,39 @@ def img_dicts(picture_folders: [str]):
                     .squeeze()
                     .numpy(force=True)
                 ] """
-            elif im_type in ["std_dev","ScaledUncertainty"]:  # Resize, so preds/depths can be color-corrected
+            elif im_type in [
+                "std_dev",
+                "ScaledUncertainty",
+            ]:  # Resize, so preds/depths can be color-corrected
                 if model == "ZoeNK":
                     d[model][im_type] = d[model][im_type] + [
                         Resize((352, 704))(
-                            torch.unsqueeze(torch.tensor(np.load(os.path.join(path_to_pics, el))) / 255.0,dim=0)
+                            torch.unsqueeze(
+                                torch.tensor(np.load(os.path.join(path_to_pics, el))) / 255.0, dim=0
+                            )
                         ).numpy(force=True)
                     ]
                 else:
                     d[model][im_type] = d[model][im_type] + [
                         Resize((352, 704))(
-                            torch.unsqueeze(torch.tensor(np.load(os.path.join(path_to_pics, el))), dim=0)).numpy(
-                            force=True
-                        )/255.0
-                    ] 
+                            torch.unsqueeze(
+                                torch.tensor(np.load(os.path.join(path_to_pics, el))), dim=0
+                            )
+                        ).numpy(force=True)
+                        / 255.0
+                    ]
             else:
                 d[model][im_type] = d[model][im_type] + [
                     Resize((352, 704))(
-                        torch.unsqueeze(torch.tensor(np.load(os.path.join(path_to_pics, el))), dim=0)
+                        torch.unsqueeze(
+                            torch.tensor(np.load(os.path.join(path_to_pics, el))), dim=0
+                        )
                     )
                     .squeeze()
                     .numpy(force=True)
                 ]
-        
-    print("d: ",d)
+
+    print("d: ", d)
     pprint(d)
     return d
 
@@ -138,7 +145,7 @@ def main(picture_folders):
         )
         gui_vector3 = server.add_gui_vector3(
             "Pixeldensity",
-            initial_value=(1.0, -1.0, 1.0),  # (40.0, 40.0, 1.0)
+            initial_value=(-1.0, -1.0, 1.0),  # (40.0, 40.0, 1.0)
             step=10,
         )
         campos = server.add_gui_vector3(
@@ -147,11 +154,13 @@ def main(picture_folders):
             step=0.1,
         )
         with server.add_gui_folder("Text toggle"):
-            img_type = server.add_gui_dropdown("Img type plane", ("preds", "img", "depth", "ScaledUncertainty", "std_dev"))
-            model= server.add_gui_dropdown("model", tuple(depths_dict.keys()))
+            img_type = server.add_gui_dropdown(
+                "Img type plane", ("preds", "img", "depth", "ScaledUncertainty", "std_dev")
+            )
+            model = server.add_gui_dropdown("model", tuple(depths_dict.keys()))
             img_num = server.add_gui_vector2(
                 "img number",
-                initial_value=(2, -1),
+                initial_value=(0, -1),
                 step=1,
             )
             gui_rgb = server.add_gui_rgb(
@@ -160,7 +169,17 @@ def main(picture_folders):
             )
 
     depth = depths_dict[model.value][img_type.value][int(img_num.value[0])]
-    K = torch.unsqueeze(get_intrinsics(depth.shape[0], depth.shape[1]), dim=0)
+    monodepth_intrinsics = np.array(
+        [[0.58, 0, 0.5, 0], [0, 1.92, 0.5, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
+    )
+    monodepth_intrinsics[0, :] *= depth.shape[1]
+    monodepth_intrinsics[1, :] *= depth.shape[0]
+    monodepth_intrinsics = torch.tensor(monodepth_intrinsics, dtype=torch.float32)
+    print(monodepth_intrinsics)
+
+    K = torch.unsqueeze(
+        monodepth_intrinsics, dim=0
+    )  # get_intrinsics(depth.shape[0], depth.shape[1]), dim=0)
     E = torch.unsqueeze(torch.eye(4, dtype=torch.float32), dim=0)
     print(E.shape)
     # E[:, 2, 3] = 2.0
@@ -200,8 +219,10 @@ def main(picture_folders):
     @server.on_client_connect
     def _(client: viser.ClientHandle) -> None:
         print("new client!")
-        client.camera.position = (0, 0, 0)  # (37, 39, -6)
-        client.camera.wxyz = (0, 9.80595212e-09, 4.99903834e-07, -9.99807668e-01)
+        client.camera.position = (-2.21710369, 0.25143548, 2.37680543)  #
+        # position: [] (-2.20064452,  0.38278909,  0.10276915)  # (37, 39, -6)wxyz: [ 0.00224802  0.01156853  0.19074115 -0.98156963]
+        # position: [0.98447588, 1.48619514, 0.49249996]
+        client.camera.wxyz = (-0.00678133, 0.01222598, 0.06174117, -0.99799427)
 
         # client.camera.wxyz = (0,0,0,0)
         # This will run whenever we get a new camera!
@@ -234,7 +255,7 @@ def main(picture_folders):
                     depthcolumn[y * depth.shape[1] + x] = torch.tensor(
                         depth[y, x], dtype=torch.float32
                     )
-    
+
                     colors[y * depth.shape[1] + x, :] = img[:, y, x] * 255
 
                     # if (y<5 or y>200) and x<5:
@@ -247,7 +268,7 @@ def main(picture_folders):
                 force=True
             )
             point_positions[point_positions == 0] = None
-        elif img_type.value in ["std_dev","ScaledUncertainty"]:
+        elif img_type.value in ["std_dev", "ScaledUncertainty"]:
             img = depth.squeeze()
             print("imgshape", img.shape)
             depth = depths_dict[model.value]["preds"][int(img_num.value[0])]
@@ -265,7 +286,7 @@ def main(picture_folders):
                     depthcolumn[y * depth.shape[1] + x] = torch.tensor(
                         depth[y, x], dtype=torch.float32
                     )
-    
+
                     colors[y * depth.shape[1] + x, :] = img[:, y, x] * 255
 
                     # if (y<5 or y>200) and x<5:
@@ -329,7 +350,12 @@ def main(picture_folders):
         )
         if len(clients) > 0 and counter % 100 == 5:
             for k in clients.keys():
-                clients[k].camera.position = campos.value
+                clients[k].camera.position = (
+                    -2.21710369,
+                    0.25143548,
+                    2.37680543,
+                )  # (37, 39, -6)wxyz: [ 0.00224802  0.01156853  0.19074115 -0.98156963]
+        # campos.value
 
         # We can use `.visible` and `.disabled` to toggle GUI elements.
 
@@ -338,4 +364,11 @@ def main(picture_folders):
 
 
 if __name__ == "__main__":
-    main(["01_01_2024_23_23_58_Posthoc_Laplace", "2024_01_05_00_27_33_647_Online_Laplace", "2024_01_06_19_02_36_715_Ensemble"])
+    main(
+        [
+            "2024_01_10_03_04_28_1861_Posthoc_Laplace",
+            "2024_01_05_00_27_33_647_Online_Laplace",
+            "2024_01_10_12_54_30_1447_Ensemble",
+            "2024_01_09_01_32_02_1452_Dropout",
+        ]
+    )

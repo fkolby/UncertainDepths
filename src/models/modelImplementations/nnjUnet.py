@@ -277,14 +277,14 @@ if __name__ == "__main__":
     )
     cfg_3 = OmegaConf.create(
         {
-            "neural_net_param_multiplication_factor": 64,
+            "neural_net_param_multiplication_factor": 32,
             "dataset_params": {
                 "input_height": 352,
                 "input_width": 1216,
                 "min_depth": 1e-4,
                 "max_depth": 80,
             },
-            "models": {"model_type": "Dropout", "p_hidden_dropout": 0.5, "p_input_dropout": 0.2},
+            "models": {"model_type": "Posthoc_Laplace"},
         }
     )
     u_net = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg)
@@ -292,9 +292,6 @@ if __name__ == "__main__":
     u_net3 = stochastic_unet(in_channels=3, out_channels=1, cfg=cfg_3)
     # u_net.to(device="cuda")
     print(u_net.stochastic_net)
-    t = torch.rand((8, 3, 352, 704), device="cuda")
-    summary(u_net, (8, 3, 352, 704), depth=300)
-    summary(u_net2, (8, 3, 352, 1216), depth=300)
     summary(u_net3, (8, 3, 352, 1216), depth=300)
     a = u_net(t)
 

@@ -4,6 +4,7 @@ import timeit
 from datetime import datetime
 
 import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
 import pandas as pd
 import torch
@@ -16,11 +17,12 @@ from pytorch_laplace.optimization.prior_precision import optimize_prior_precisio
 from torchinfo import summary
 from tqdm import tqdm
 
+from sklearn import metrics
+
 import wandb
 from src.utility.debug_utils import time_since_previous_log
-from src.utility.eval_utils import calc_loss_metrics, filter_valid
+from src.utility.eval_utils import calc_loss_metrics, filter_valid, save_eval_images
 from src.utility.other_utils import RunningAverageDict
-from src.utility.viz_utils import colorize, denormalize, log_images
 from src.utility.train_utils import seed_everything
 
 
@@ -41,7 +43,11 @@ def eval_model(
         device = "cpu"
 
     date_and_time_and_model = (
-        datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + "_" + str(os.environ.get("SLURM_JOB_ID")) +  "_" + cfg.models.model_type
+        datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        + "_"
+        + str(os.environ.get("SLURM_JOB_ID"))
+        + "_"
+        + cfg.models.model_type
     )
     i = 0
     if cfg.models.model_type == "Posthoc_Laplace":
@@ -179,13 +185,15 @@ def eval_model(
                     )  # unsqueeze to have a model-dimension (first) - move to cpu to free memory on gpu
 
             case "ZoeNK":
-                print((
+                print(
+                    (
                         cfg.models.n_models,
                         depths.shape[0],
                         depths.shape[1],
                         cfg.dataset_params.input_height,
                         cfg.dataset_params.input_width,
-                    ))
+                    )
+                )
                 preds = torch.zeros(
                     size=(
                         cfg.models.n_models,
@@ -195,13 +203,13 @@ def eval_model(
                         cfg.dataset_params.input_width,
                     ),
                     device="cpu",
-                ) # dimensions: model, batch, color, height, width.
+                )  # dimensions: model, batch, color, height, width.
                 for j in range(cfg.models.n_models):
                     print(model(images))
                     preds[j, :, :, :, :] = torch.unsqueeze(
                         torchvision.transforms.Resize(
                             (cfg.dataset_params.input_height, cfg.dataset_params.input_width)
-                        )(model(images)["metric_depth"] ),
+                        )(model(images)["metric_depth"]),
                         dim=0,
                     ).to(
                         device="cpu"
@@ -210,131 +218,16 @@ def eval_model(
         # -----------------------------------  Save image, depth, pred for visualization -------------------------------------------------
 
         if cfg.save_images and i == 0:
-            for j in range(min(images.shape[0], 6)):
-                image = images[j, :, :, :]
-                depth = depths[j, :, :, :]
+            save_eval_images(
+                images=images,
+                depths=depths,
+                preds=preds,
+                uncertainty=uncertainty,
+                date_and_time_and_model=date_and_time_and_model,
+                cfg=cfg,
+            )
 
-                if cfg.models.model_type not in [
-                    "Posthoc_Laplace",
-                    "Online_Laplace",
-                ]:  # then collapse on different predictions.
-                    pred = torch.mean(
-                        preds[:, j, :, :, :], dim=0
-                    )  # pred is average prediction, preds ModelxBatchxColorxHxW
-
-                    std_dev = (
-                        torch.mean(preds[:, j, :, :, :] ** 2, dim=0) - pred**2
-                    ).sqrt()  # var is variance over model. since color dimension is 1, it is by pixel.
-
-                else:  # laplace has already collapsed across model dim.
-                    pred = preds[j, :, :, :]
-                    std_dev = uncertainty[j, :, :, :]
-
-                os.makedirs(
-                    os.path.join(cfg.save_images_path, "images/", date_and_time_and_model),
-                    exist_ok=True,
-                )
-                d = torch.tensor(
-                    np.transpose(colorize(torch.squeeze(depth, dim=0), 0, 80), (2, 0, 1))
-                )
-                p = torch.tensor(
-                    np.transpose(colorize(torch.squeeze(pred, dim=0), 0, 80), (2, 0, 1))
-                )
-                sd = torch.tensor(
-                    np.transpose(
-                        colorize(
-                            torch.squeeze(std_dev, dim=0),
-                            vmin=0,
-                            vmax=torch.quantile(std_dev, 0.95),
-                        ),
-                        (2, 0, 1),
-                    )  # None,None = v.min(), v.max() for color range
-                )
-
-                # Get scale-normalized uncertainty:
-                scaled_uncertainty_uncolored = std_dev / pred
-                scaled_uncertainty = torch.tensor(
-                    np.transpose(
-                        colorize(
-                            torch.squeeze(scaled_uncertainty_uncolored, dim=0),
-                            vmin=0,
-                            vmax=torch.quantile(scaled_uncertainty_uncolored, 0.95),
-                        ),
-                        (2, 0, 1),
-                    )  # None,None = v.min(), v.max() for color range
-                )
-
-                if cfg.models.model_type == "ZoeNK":
-                    im = transforms.ToPILImage()(
-                        image
-                    )  # dont denormalize; it is the original image.
-                else:
-                    im = transforms.ToPILImage()(denormalize(image).cpu())
-                print(type(d))
-
-                # --------------------------------------  LOG AND SAVE  ---------------------------------------------------------------------------------
-                im.save(
-                    os.path.join(
-                        cfg.save_images_path,
-                        "images/",
-                        date_and_time_and_model,
-                        f"{j}_{cfg.models.model_type}_img.png",
-                    )
-                )
-
-                print(d.shape, p.shape, image.shape, pred.shape, depth.shape)
-
-                for key, value in {
-                    "depth": d,
-                    "pred": p,
-                    "sd": sd,
-                    "ScaledUncertainty": scaled_uncertainty,
-                }.items():  # save images/depths/etc to file
-                    transforms.ToPILImage()(value).save(
-                        os.path.join(
-                            cfg.save_images_path,
-                            "images/",
-                            date_and_time_and_model,
-                            f"{j}_{cfg.models.model_type}_{key}.png",
-                        )
-                    )
-
-                for key, value in {
-                    "img": image,
-                    "depth": depth,
-                    "preds": pred,
-                    "std_dev": sd,
-                    "ScaledUncertainty": scaled_uncertainty,
-                }.items():
-                    if key == "img":
-                        np.save(
-                            os.path.join(
-                                cfg.save_images_path,
-                                "images/",
-                                date_and_time_and_model,
-                                f"np_{key}_{cfg.models.model_type}_{j}.npy",
-                            ),
-                            torch.squeeze(denormalize(value), dim=0).numpy(force=True),
-                        )
-                    else:
-                        np.save(
-                            os.path.join(
-                                cfg.save_images_path,
-                                "images/",
-                                date_and_time_and_model,
-                                f"np_{key}_{cfg.models.model_type}_{j}.npy",
-                            ),
-                            torch.squeeze(value, dim=0).numpy(force=True),
-                        )
-
-                log_images(
-                    img=image.detach(),
-                    depth=depth.detach(),
-                    pred=pred.detach(),
-                    vmin=cfg.dataset_params.min_depth,
-                    vmax=cfg.dataset_params.max_depth,
-                    step=(j + 1) * 5000000,
-                )
+        # -----------------------------------  Compute uncertainties and sort descending ----------------------------------------------------
 
         if cfg.models.model_type not in [
             "Posthoc_Laplace",
@@ -349,7 +242,14 @@ def eval_model(
 
         scaled_uncertainty_uncolored = uncertainty / pred
 
-        print(depths.shape, pred.shape,OOD_class.shape, image.shape,sd.shape, uncertainty.shape)
+        print(
+            depths.shape,
+            pred.shape,
+            OOD_class.shape,
+            images.shape,
+            scaled_uncertainty_uncolored,
+            uncertainty.shape,
+        )
         if cfg.OOD.use_white_noise_box_test:
             # in that case we should sort by class, so see whether uncertainties are higher on OOD.
 
@@ -447,6 +347,57 @@ def eval_model(
                 "scaled uncertainty out of distribution": scaled_uncertainty_out_of_distribution.mean(),
             }
         )
+
+        unscaled_kde_data = pd.concat(
+            [
+                pd.DataFrame(
+                    {
+                        "Class": "ID",
+                        "uncertainty": uncertainty_in_distribution,
+                    }
+                ),
+                pd.DataFrame(
+                    {
+                        "Class": "OOD",
+                        "uncertainty": uncertainty_out_of_distribution,
+                    }
+                ),
+            ]
+        )
+
+        scaled_kde_data = pd.concat(
+            [
+                pd.DataFrame(
+                    {
+                        "Class": "ID",
+                        "uncertainty": scaled_uncertainty_in_distribution,
+                    }
+                ),
+                pd.DataFrame(
+                    {
+                        "Class": "OOD",
+                        "uncertainty": scaled_uncertainty_out_of_distribution,
+                    }
+                ),
+            ]
+        )
+        sns.kdeplot(unscaled_kde_data, x="uncertainty", hue="Class").get_figure().savefig(
+            os.path.join(
+                cfg.save_images_path,
+                "plots/",
+                date_and_time_and_model,
+                f"predict_OOD_by_variance_{cfg.models.model_type}",
+            )
+        )
+        sns.kdeplot(scaled_kde_data, x="uncertainty", hue="Class").get_figure().savefig(
+            os.path.join(
+                cfg.save_images_path,
+                "plots/",
+                date_and_time_and_model,
+                f"predict_OOD_by_variance_scaled_{cfg.models.model_type}",
+            )
+        )
+
     _, sort_by_uncertainty_ascending_indices = torch.sort(uncertainty_all_samples)
     _, sort_by_scaled_uncertainty_ascending_indices = torch.sort(scaled_uncertainty_all_samples)
 
@@ -558,6 +509,48 @@ def eval_model(
             f"scaled_plot_{cfg.models.model_type}_",
         ),
     )
+
+    # Classify OOD by variance ROC
+    scaled_roc_curve_fpr, scaled_roc_curve_tpr, _ = metrics.roc_curve(
+        y_true=OOD_class, y_pred=scaled_uncertainty_all_samples
+    )  # using variance as prediction, we compute tpr and fpr for different thresholds of variance
+    unscaled_roc_curve_fpr, unscaled_roc_curve_tpr, _ = metrics.roc_curve(
+        y_true=OOD_class, y_pred=uncertainty_all_samples
+    )  # using variance as prediction, we compute tpr and fpr for different thresholds of variance
+
+    roc_curves_df = (
+        pd.concat(
+            [
+                pd.Dataframe(
+                    columns={
+                        "Model": cfg.models.model_type,
+                        "tpr": scaled_roc_curve_tpr,
+                        "fpr": scaled_roc_curve_fpr,
+                        "Scaled": "Scaled",
+                    }
+                ),
+                pd.Dataframe(
+                    columns={
+                        "Model": cfg.models.model_type,
+                        "tpr": unscaled_roc_curve_tpr,
+                        "fpr": unscaled_roc_curve_fpr,
+                        "Scaled": "Unscaled",
+                    }
+                ),
+            ]
+        ),
+    )
+
+    roc_curves_df.to_csv(
+        os.path.join(
+            cfg.save_images_path,
+            "uncertainty_df/",
+            date_and_time_and_model,
+            f"roc_curves_{cfg.models.model_type}",
+        ),
+        index=False,
+    )
+
     print("Updating metrics")
     metrics.update(losses)
     if round_vals:
@@ -571,32 +564,33 @@ def eval_model(
             return m
 
     metrics = {k: r(v) for k, v in metrics.get_value().items()}
-    
-    save_metrics= {k: [v.numpy(force=True)] for k,v in metrics.items()}
+
+    save_metrics = {k: [v.numpy(force=True)] for k, v in metrics.items()}
     file_name = os.path.join(cfg.save_images_path, cfg.results_df_prefix + "output_results.csv")
     try:
         results_df = pd.read_csv(file_name)
-        out_df = pd.DataFrame(data = save_metrics)
-         
-        out_df["uncertainty_in_dist"] = uncertainty_in_distribution.mean(),
-        out_df["uncertainty_out_of_dist"] = uncertainty_out_of_distribution.mean(),
-        out_df["scaled_uncertainty_in_dist"] = scaled_uncertainty_in_distribution.mean(),
-        out_df["scaled_uncertainty_out_of_dist"] = scaled_uncertainty_out_of_distribution.mean(),
+        out_df = pd.DataFrame(data=save_metrics)
+
+        out_df["uncertainty_in_dist"] = (float(uncertainty_in_distribution.mean()),)
+        out_df["uncertainty_out_of_dist"] = (float(uncertainty_out_of_distribution.mean()),)
+        out_df["scaled_uncertainty_in_dist"] = (float(scaled_uncertainty_in_distribution.mean()),)
+        out_df["scaled_uncertainty_out_of_dist"] = (
+            float(scaled_uncertainty_out_of_distribution.mean()),
+        )
         out_df["model_type"] = cfg.models.model_type
         out_df["identification"] = "_".join(date_and_time_and_model.split("_")[:-1])
         pd.concat([out_df, results_df]).to_csv(file_name, index=False)
     except FileNotFoundError:
-        out_df = pd.DataFrame(data = save_metrics)
+        out_df = pd.DataFrame(data=save_metrics)
         out_df["model_type"] = cfg.models.model_type
-        
-        out_df["uncertainty_in_dist"] = uncertainty_in_distribution.mean(),
-        out_df["uncertainty_out_of_dist"] = uncertainty_out_of_distribution.mean(),
-        out_df["scaled_uncertainty_in_dist"] = scaled_uncertainty_in_distribution.mean(),
-        out_df["scaled_uncertainty_out_of_dist"] = scaled_uncertainty_out_of_distribution.mean(),
+
+        out_df["uncertainty_in_dist"] = (float(uncertainty_in_distribution.mean()),)
+        out_df["uncertainty_out_of_dist"] = (float(uncertainty_out_of_distribution.mean()),)
+        out_df["scaled_uncertainty_in_dist"] = (float(scaled_uncertainty_in_distribution.mean()),)
+        out_df["scaled_uncertainty_out_of_dist"] = (
+            float(scaled_uncertainty_out_of_distribution.mean()),
+        )
         out_df["identification"] = "_".join(date_and_time_and_model.split("_")[:-1])
         out_df.to_csv(file_name, index=False)
-        
-
-
 
     return metrics

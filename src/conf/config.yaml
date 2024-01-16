@@ -8,7 +8,7 @@ eval_garg_crop: True
 eval_eigen_crop: False
 neural_net_param_multiplication_factor: 96
 save_images_path: "/home/jbv415/UncertainDepths/src/models/outputs/"
-results_df_prefix: "test_results"
+results_df_prefix: "test_"
 transforms:
  rand_crop: False
  kb_crop: True
@@ -17,21 +17,13 @@ transforms:
  rand_aug: True
  rotational_degree: 2.0 
 hyperparameters:
- learning_rate : 3e-4
- batch_size : 8
-dataset_params:
-  name: "KITTI"
-  data_dir : "/home/jbv415/UncertainDepths/data/external/KITTI/"
-  test_set_is_actually_valset: True
-  num_workers: 8
-  min_depth : 1e-8
-  max_depth : 80
-  input_height: 352
-  input_width: 1216
+ learning_rate: 3e-4
+ batch_size: 8
 trainer_args:
   max_epochs: 50
 OOD:
   use_white_noise_box_test: True
 defaults: 
  - models: Posthoc_Laplace
+ - dataset_params: KITTI
  - _self_

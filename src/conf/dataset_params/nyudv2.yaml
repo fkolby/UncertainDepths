@@ -1,0 +1,7 @@
+name: "nyudv2"
+test_set_is_actually_valset: True
+num_workers: 8
+min_depth : 1e-8
+max_depth : 10
+input_height: 352
+input_width: 1216

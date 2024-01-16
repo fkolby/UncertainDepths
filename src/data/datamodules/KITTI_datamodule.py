@@ -10,7 +10,7 @@ class KITTI_datamodule(base_datamodule):
             "data_dir", "/home/frederik/UncertainDepths/data/external/KITTI/"
         )
         super().__init__(*args, **kwargs)
-        
+
     def setup(self, stage: str, **kwargs) -> None:
         print(stage)
         assert self.use_val_dir_for_val_and_test
@@ -46,7 +46,9 @@ class KITTI_datamodule(base_datamodule):
                 )
                 print("len of train-vallength: ", len(train_val_set))
 
-                self.test_set = Subset(test_set, np.arange(18525, len(test_set), dtype=int).tolist())
+                self.test_set = Subset(
+                    test_set, np.arange(18525, len(test_set), dtype=int).tolist()
+                )
                 # plot_and_save_tensor_as_fig(self.train_set[-1][0], "last_train_img")
                 # plot_and_save_tensor_as_fig(self.val_set[0][0], "first_val_img")
                 assert self.train_set[-1][0].shape == self.val_set[0][0].shape

@@ -23,6 +23,8 @@ class base_datamodule(pl.LightningDataModule):
         self.transform = transform
         self.target_transform = target_transform
 
+        print(cfg)
+
         self.num_workers = cfg.dataset_params.num_workers
         self.batch_size = cfg.hyperparameters.batch_size
         self.input_height = cfg.dataset_params.input_height
@@ -33,7 +35,6 @@ class base_datamodule(pl.LightningDataModule):
         self.train_set = None
         self.test_set = None
         self.predict_set = None
-
 
     def setup(self, stage: str, **kwargs) -> None:
         raise NotImplementedError

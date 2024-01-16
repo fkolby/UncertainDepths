@@ -18,18 +18,17 @@ class KITTI_dataset(depth_dataset):
                 self.filenames = f.readlines()
         else:
             Exception("Not implemented non-train/test for choosing files yet")
-        
 
     def get_PIL_image(self, *args, **kwargs):
         sample_path = self.filenames[kwargs.pop("idx")]
 
         if self.train_or_test == "train":
-            """ :  # I have not yet downloaded the eigen split for other camera. random.random()>0.5 #self.args.dataset == 'kitti' and self.args.use_right is True and random.random() > 0.5:
-                input_path = os.path.join(
-                    self.args.data_path, self.data_dir + sample_path.split()[3]
-                )
-                label_path = os.path.join(self.args.gt_path, self.data_dir + sample_path.split()[4]) """
-        
+            """:  # I have not yet downloaded the eigen split for other camera. random.random()>0.5 #self.args.dataset == 'kitti' and self.args.use_right is True and random.random() > 0.5:
+            input_path = os.path.join(
+                self.args.data_path, self.data_dir + sample_path.split()[3]
+            )
+            label_path = os.path.join(self.args.gt_path, self.data_dir + sample_path.split()[4])"""
+
             input_path = os.path.join(self.data_dir, sample_path.split()[0])
             label_path = os.path.join(self.data_dir, "train", sample_path.split()[1])
         else:
