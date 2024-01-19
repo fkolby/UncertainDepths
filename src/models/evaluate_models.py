@@ -16,8 +16,9 @@ from pytorch_laplace.laplace.diag import DiagLaplace
 from pytorch_laplace.optimization.prior_precision import optimize_prior_precision
 from torchinfo import summary
 from tqdm import tqdm
+import copy
 
-from sklearn import metrics
+from sklearn.metrics import roc_curve
 
 import wandb
 from src.utility.debug_utils import time_since_previous_log
@@ -42,6 +43,7 @@ def eval_model(
     else:
         device = "cpu"
 
+    #set up saving directories
     date_and_time_and_model = (
         datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         + "_"
@@ -49,7 +51,17 @@ def eval_model(
         + "_"
         + cfg.models.model_type
     )
+    os.makedirs(
+        os.path.join(cfg.save_images_path, "uncertainty_df/", date_and_time_and_model),
+        exist_ok=True,
+    )
+    os.makedirs(
+        os.path.join(cfg.save_images_path, "plots/", date_and_time_and_model), exist_ok=True
+    )
     i = 0
+    
+
+    #Calculate hessians and priors for those models
     if cfg.models.model_type == "Posthoc_Laplace":
         hessian_calculator = MSEHessianCalculator(
             hessian_shape="diag", approximation_accuracy="approx"
@@ -218,14 +230,26 @@ def eval_model(
         # -----------------------------------  Save image, depth, pred for visualization -------------------------------------------------
 
         if cfg.save_images and i == 0:
-            save_eval_images(
-                images=images,
-                depths=depths,
-                preds=preds,
-                uncertainty=uncertainty,
-                date_and_time_and_model=date_and_time_and_model,
-                cfg=cfg,
-            )
+            if cfg.models.model_type not in [
+            "Posthoc_Laplace",
+            "Online_Laplace",]:
+                save_eval_images(
+                    images=images,
+                    depths=depths,
+                    preds=preds,
+                    uncertainty=None,
+                    date_and_time_and_model=date_and_time_and_model,
+                    cfg=cfg,
+                )
+            else:
+                save_eval_images(
+                    images=images,
+                    depths=depths,
+                    preds=preds,
+                    uncertainty=uncertainty,
+                    date_and_time_and_model=date_and_time_and_model,
+                    cfg=cfg,
+                )
 
         # -----------------------------------  Compute uncertainties and sort descending ----------------------------------------------------
 
@@ -252,7 +276,7 @@ def eval_model(
         )
         if cfg.OOD.use_white_noise_box_test:
             # in that case we should sort by class, so see whether uncertainties are higher on OOD.
-
+            OOD_class_all_pixels = copy.deepcopy(OOD_class)
             # Obtain indices for valid uncertainty estimates (e.g depth within 0-80 meters (based on ground truth - which is not masked by white noise - so e.g. a white-noise box placed in sky would not be counted here (as depth>80 m))).
             print(
                 "OOD:",
@@ -353,13 +377,13 @@ def eval_model(
                 pd.DataFrame(
                     {
                         "Class": "ID",
-                        "uncertainty": uncertainty_in_distribution,
+                        "Uncertainty": uncertainty_in_distribution,
                     }
                 ),
                 pd.DataFrame(
                     {
                         "Class": "OOD",
-                        "uncertainty": uncertainty_out_of_distribution,
+                        "Uncertainty": uncertainty_out_of_distribution,
                     }
                 ),
             ]
@@ -370,18 +394,18 @@ def eval_model(
                 pd.DataFrame(
                     {
                         "Class": "ID",
-                        "uncertainty": scaled_uncertainty_in_distribution,
+                        "Uncertainty": scaled_uncertainty_in_distribution,
                     }
                 ),
                 pd.DataFrame(
                     {
                         "Class": "OOD",
-                        "uncertainty": scaled_uncertainty_out_of_distribution,
+                        "Uncertainty": scaled_uncertainty_out_of_distribution,
                     }
                 ),
             ]
         )
-        sns.kdeplot(unscaled_kde_data, x="uncertainty", hue="Class").get_figure().savefig(
+        sns.kdeplot(unscaled_kde_data, x="Uncertainty", hue="Class", common_norm=False,bw_adjust=0.5).get_figure().savefig(
             os.path.join(
                 cfg.save_images_path,
                 "plots/",
@@ -389,7 +413,7 @@ def eval_model(
                 f"predict_OOD_by_variance_{cfg.models.model_type}",
             )
         )
-        sns.kdeplot(scaled_kde_data, x="uncertainty", hue="Class").get_figure().savefig(
+        sns.kdeplot(scaled_kde_data, x="Uncertainty", hue="Class",common_norm=False,bw_adjust=0.5).get_figure().savefig(
             os.path.join(
                 cfg.save_images_path,
                 "plots/",
@@ -466,13 +490,6 @@ def eval_model(
                 plt.savefig(fname=file_prefix + c)
                 plt.clf()
 
-    os.makedirs(
-        os.path.join(cfg.save_images_path, "uncertainty_df/", date_and_time_and_model),
-        exist_ok=True,
-    )
-    os.makedirs(
-        os.path.join(cfg.save_images_path, "plots/", date_and_time_and_model), exist_ok=True
-    )
     uncertainty_df.to_csv(
         os.path.join(
             cfg.save_images_path,
@@ -511,11 +528,11 @@ def eval_model(
     )
 
     # Classify OOD by variance ROC
-    scaled_roc_curve_fpr, scaled_roc_curve_tpr, _ = metrics.roc_curve(
-        y_true=OOD_class, y_pred=scaled_uncertainty_all_samples
+    scaled_roc_curve_fpr, scaled_roc_curve_tpr, _ = roc_curve(
+        y_true=OOD_class_all_pixels, y_score=scaled_uncertainty_all_samples
     )  # using variance as prediction, we compute tpr and fpr for different thresholds of variance
-    unscaled_roc_curve_fpr, unscaled_roc_curve_tpr, _ = metrics.roc_curve(
-        y_true=OOD_class, y_pred=uncertainty_all_samples
+    unscaled_roc_curve_fpr, unscaled_roc_curve_tpr, _ = roc_curve(
+        y_true=OOD_class_all_pixels, y_score=uncertainty_all_samples
     )  # using variance as prediction, we compute tpr and fpr for different thresholds of variance
 
     roc_curves_df = (

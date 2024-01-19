@@ -176,7 +176,7 @@ def main(cfg: DictConfig):
                 eval_model(
                     model=model,
                     test_loader=datamoduleEval.test_dataloader(),
-                    dataloader_for_hessian=datamoduleEval.train_dataloader(),
+                    dataloader_for_hessian=datamoduleEval.val_dataloader(),
                     cfg=cfg,
                 ),
                 step=50000,
@@ -224,7 +224,7 @@ def main(cfg: DictConfig):
                 eval_model(
                     model=model,
                     test_loader=datamoduleEval.test_dataloader(),
-                    dataloader_for_hessian=datamoduleEval.train_dataloader(),
+                    dataloader_for_hessian=datamoduleEval.val_dataloader(),
                     cfg=cfg,
                     online_hessian=torch.load(f"{cfg.models.model_type}_hessian.pt"),
                 ),

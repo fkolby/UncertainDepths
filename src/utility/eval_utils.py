@@ -120,7 +120,7 @@ def save_eval_images(images, depths, preds, uncertainty, date_and_time_and_model
                 colorize(
                     torch.squeeze(diff, dim=0),
                     vmin=0,
-                    vmax=torch.quantile(diff, 0.95),
+                    vmax=80,
                 ),
                 (2, 0, 1),
             )  # None,None = v.min(), v.max() for color range

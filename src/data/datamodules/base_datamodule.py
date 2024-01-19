@@ -53,6 +53,7 @@ class base_datamodule(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             pin_memory=True,
+            drop_last=True,
         )
 
     def val_dataloader(self, shuffle=False) -> DataLoader:
@@ -66,6 +67,7 @@ class base_datamodule(pl.LightningDataModule):
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             pin_memory=True,
+            drop_last=True,
         )
 
     def test_dataloader(self, shuffle=False) -> DataLoader:

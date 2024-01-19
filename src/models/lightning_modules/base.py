@@ -72,46 +72,45 @@ class Base_lightning_module(pl.LightningModule):
         )  # perhaps also punish above maxdepth during training?
 
         if self.cfg.models.model_type == "Online_Laplace":
-            with isolate_rng():
-                if self.cfg.models.override_constant_hessian_memory_factor:
-                    out_dict = self.Online_Laplace.step(
-                        img=x,
-                        depth=y,
-                        train=True,
-                        hessian_memory_factor=1
-                        - self.lr_schedulers().get_last_lr()[
-                            0
-                        ]  # 5*(1 - self.cfg.models.hessian_memory_factor)*self.lr_schedulers().get_last_lr()[0]/self.cfg.hyperparameters.learning_rate,
-                        # self.lr_schedulers().get_last_lr()[0]#lr_#1*(1 - self.cfg.models.hessian_memory_factor)*self.lr_schedulers().get_last_lr()[0]/self.cfg.learning_rate,
-                        ,
-                        epoch=self._trainer.current_epoch,
-                    )
-                else:
-                    out_dict = self.Online_Laplace.step(
-                        img=x,
-                        depth=y,
-                        train=True,
-                        epoch=self._trainer.current_epoch,
-                    )
-                loss = out_dict["loss"]
-                preds = out_dict["preds"]
-                variance = out_dict["variance"]
-                wandb.log(
-                    {
-                        "Time spent on forward pass": out_dict["time_forward"],
-                        "Time spent on hessian calculation": out_dict["time_hessian"],
-                        "Time spent in rest of step": out_dict["time_rest"],
-                        "Time spent in total of step": out_dict["time_total"],
-                        "Time spent in tough calculation of step": out_dict["time_tough"],
-                        "Size of change in hessian": out_dict["size_of_change"],
-                        "Absolute mean change in hessian": out_dict["abs_size_of_change"],
-                        "Current mean hessian values": out_dict["hessian_size"],
-                        "Median of hessian: ": out_dict["hessian_median"],
-                        "10th quantile of hessian": out_dict["hessian_tenth_qt"],
-                        "90th quantile of hessian": out_dict["hessian_ninetieth_qt"],
-                    },
-                    step=self.tstep,
+            if self.cfg.models.override_constant_hessian_memory_factor:
+                out_dict = self.Online_Laplace.step(
+                    img=x,
+                    depth=y,
+                    train=True,
+                    hessian_memory_factor=1
+                    - self.lr_schedulers().get_last_lr()[
+                        0
+                    ]  # 5*(1 - self.cfg.models.hessian_memory_factor)*self.lr_schedulers().get_last_lr()[0]/self.cfg.hyperparameters.learning_rate,
+                    # self.lr_schedulers().get_last_lr()[0]#lr_#1*(1 - self.cfg.models.hessian_memory_factor)*self.lr_schedulers().get_last_lr()[0]/self.cfg.learning_rate,
+                    ,
+                    epoch=self._trainer.current_epoch,
                 )
+            else:
+                out_dict = self.Online_Laplace.step(
+                    img=x,
+                    depth=y,
+                    train=True,
+                    epoch=self._trainer.current_epoch,
+                )
+            loss = out_dict["loss"]
+            preds = out_dict["preds"]
+            variance = out_dict["variance"]
+            wandb.log(
+                {
+                    "Time spent on forward pass": out_dict["time_forward"],
+                    "Time spent on hessian calculation": out_dict["time_hessian"],
+                    "Time spent in rest of step": out_dict["time_rest"],
+                    "Time spent in total of step": out_dict["time_total"],
+                    "Time spent in tough calculation of step": out_dict["time_tough"],
+                    "Size of change in hessian": out_dict["size_of_change"],
+                    "Absolute mean change in hessian": out_dict["abs_size_of_change"],
+                    "Current mean hessian values": out_dict["hessian_size"],
+                    "Median of hessian: ": out_dict["hessian_median"],
+                    "10th quantile of hessian": out_dict["hessian_tenth_qt"],
+                    "90th quantile of hessian": out_dict["hessian_ninetieth_qt"],
+                },
+                step=self.tstep,
+            )
         else:
             preds = self(x)
 
@@ -158,18 +157,17 @@ class Base_lightning_module(pl.LightningModule):
             y >= self.min_depth, y <= self.max_depth
         )  # perhaps also punish above maxdepth during training?
 
-        with isolate_rng():
-            if self.cfg.models.model_type == "Online_Laplace":
-                out_dict = self.Online_Laplace.step(
-                    img=x, depth=y, train=False, epoch=self._trainer.current_epoch
-                )
-                loss = out_dict["loss"]
-                preds = out_dict["preds"]
-                variance = out_dict["variance"]
-            else:
-                preds = self(x)
+        if self.cfg.models.model_type == "Online_Laplace":
+            out_dict = self.Online_Laplace.step(
+                img=x, depth=y, train=False, epoch=self._trainer.current_epoch
+            )
+            loss = out_dict["loss"]
+            preds = out_dict["preds"]
+            variance = out_dict["variance"]
+        else:
+            preds = self(x)
 
-                loss = self.loss_function(preds[mask], y[mask])
+            loss = self.loss_function(preds[mask], y[mask])
 
         print(f"VALIDATION: x: {x.shape} y: {y.shape}, pred: {preds.shape}")
 

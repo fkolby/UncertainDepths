@@ -33,7 +33,7 @@ class OnlineLaplace:
         self.time_forward = 0.0
         self.time_hessian = 0.0
         self.time_rest = 0.0
-        self.time_total = 0.0
+        self.time_total = 1.0
         self.time_expected_tough_calc = 0.0
         self.time_append = 0.0
         self.time_second_hess_start = 0.0
@@ -65,7 +65,7 @@ class OnlineLaplace:
             self.cfg.models.update_hessian_probabilistically
         ):  # if updating every 10th time, to ensure hessian mem factor is a bound on |theta_t-theta_t-10|, it must be 10*learning_rate.
             alpha = 1 - hessian_memory_factor
-            hessian_memory_factor = 1 - self.cfg.models.update_hessian_every * alpha
+            hessian_memory_factor = 1 - alpha
 
         total_time_start = time.time()
         sigma_q = self.sampler.posterior_scale(
@@ -78,6 +78,11 @@ class OnlineLaplace:
             )
             preds = self.net(img)
             loss = self.loss_function(preds[mask], depth[mask])
+            preds_all_samples = [preds]
+            hessian_tenth_qt = 13
+            hessian_ninetieth_qt = 13
+            hessian_size = 13
+            hessian_median = 13
 
         else:
             mu_q = parameters_to_vector(self.net.parameters())
@@ -107,6 +112,7 @@ class OnlineLaplace:
 
             temp_hessians = []
             for sample in net_samples:
+                print("samplingactually", flush=True)
                 vector_to_parameters(sample, self.net.parameters())
                 forward_time_start = time.time()
                 preds = self.net(img)
@@ -122,6 +128,11 @@ class OnlineLaplace:
                     update_this_step = (not self.cfg.models.update_hessian_probabilistically) or (
                         np.random.rand() <= (1 / self.cfg.models.update_hessian_every)
                     )
+                    print((1 / self.cfg.models.update_hessian_every), (not self.cfg.models.update_hessian_probabilistically) or (
+                        np.random.rand() <= (1 / self.cfg.models.update_hessian_every), np.random.rand(), (
+                        np.random.rand() <= (1 / self.cfg.models.update_hessian_every)
+                    )), flush=True)
+                    print("samplingactually", flush=True)
                     if update_this_step:
                         print("updatehessian!", flush=True)
                         expected_tough_calc = time.time()
@@ -143,14 +154,24 @@ class OnlineLaplace:
                 temp_hessian = self.sampler.average_hessian_samples(
                     hessian=temp_hessians, constant=self.constant
                 )  # mean(hessians)/constant #ask about this
+
                 self.hessian_change_abs = torch.mean(
                     torch.abs(temp_hessian + hessian_memory_factor * self.hessian - self.hessian)
                 )
                 self.hessian_change_signed = torch.mean(
                     temp_hessian + hessian_memory_factor * self.hessian - self.hessian
-                )
+                ) 
                 self.hessian = temp_hessian + hessian_memory_factor * self.hessian
+                """
 
+                
+                self.hessian = temp_hessian*(1-hessian_memory_factor) + hessian_memory_factor*self.hessian
+                self.hessian_change_abs = torch.mean(
+                    torch.abs(temp_hessian + hessian_memory_factor * self.hessian - self.hessian)
+                )
+                self.hessian_change_signed = torch.mean(
+                    temp_hessian + hessian_memory_factor * self.hessian - self.hessian
+                ) """
             else:
                 self.hessian_change_abs = torch.zeros_like(mu_q)
                 self.change_signed = torch.zeros_like(mu_q)
