@@ -155,23 +155,25 @@ class OnlineLaplace:
                     hessian=temp_hessians, constant=self.constant
                 )  # mean(hessians)/constant #ask about this
 
-                self.hessian_change_abs = torch.mean(
-                    torch.abs(temp_hessian + hessian_memory_factor * self.hessian - self.hessian)
-                )
-                self.hessian_change_signed = torch.mean(
-                    temp_hessian + hessian_memory_factor * self.hessian - self.hessian
-                ) 
-                self.hessian = temp_hessian + hessian_memory_factor * self.hessian
-                """
-
+                if self.cfg.models.use_exp_average_instead:
+                    self.hessian = temp_hessian*(1-hessian_memory_factor) + hessian_memory_factor*self.hessian
+                    self.hessian_change_abs = torch.mean(
+                        torch.abs(temp_hessian + hessian_memory_factor * self.hessian - self.hessian)
+                    )
+                    self.hessian_change_signed = torch.mean(
+                        temp_hessian + hessian_memory_factor * self.hessian - self.hessian
+                    )
                 
-                self.hessian = temp_hessian*(1-hessian_memory_factor) + hessian_memory_factor*self.hessian
-                self.hessian_change_abs = torch.mean(
-                    torch.abs(temp_hessian + hessian_memory_factor * self.hessian - self.hessian)
-                )
-                self.hessian_change_signed = torch.mean(
-                    temp_hessian + hessian_memory_factor * self.hessian - self.hessian
-                ) """
+                else:
+
+                    self.hessian_change_abs = torch.mean(
+                        torch.abs(temp_hessian + hessian_memory_factor * self.hessian - self.hessian)
+                    )
+                    self.hessian_change_signed = torch.mean(
+                        temp_hessian + hessian_memory_factor * self.hessian - self.hessian
+                    ) 
+                    self.hessian = torch.clamp(temp_hessian + hessian_memory_factor * self.hessian, min = self.hessian*0.5**(1/1000)+1e-8, max=self.hessian*2**(1/1000) + 1e-8)
+                    
             else:
                 self.hessian_change_abs = torch.zeros_like(mu_q)
                 self.change_signed = torch.zeros_like(mu_q)

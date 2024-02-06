@@ -78,7 +78,7 @@ class base_datamodule(pl.LightningDataModule):
         return DataLoader(
             self.test_set,
             shuffle=shuffle,
-            batch_size=self.batch_size,
+            batch_size=4,
             num_workers=self.num_workers,
             pin_memory=True,
         )

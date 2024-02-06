@@ -90,6 +90,8 @@ class depth_dataset(Dataset):
         if self.dataset_type_is_ood and self.cfg.OOD.use_white_noise_box_test:
             c, h, w = input_img.shape
 
+            pink = torch.tensor((207, 17, 191)).reshape(3,1,1)
+
             box_y_offset = 100
             box_x_offset = 100
 
@@ -99,7 +101,7 @@ class depth_dataset(Dataset):
                 :,
                 box_y_start : box_y_start + box_y_offset,
                 box_x_start : box_x_start + box_x_offset,
-            ] = torch.rand(3, box_y_offset, box_x_offset)
+            ] = torch.rand(3, box_y_offset, box_x_offset)*pink/255
 
             OOD_class = torch.zeros_like(label_img, dtype=torch.int16)  # 0 is in distribution
             OOD_class[

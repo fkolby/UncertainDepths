@@ -75,8 +75,8 @@ def filter_valid(
     return gt_depth[valid_mask], pred[valid_mask], uncertainty[valid_mask]
 
 
-def save_eval_images(images, depths, preds, uncertainty, date_and_time_and_model, cfg):
-    for j in range(min(images.shape[0], 6)):
+def save_eval_images(images, depths, preds, uncertainty, date_and_time_and_model, cfg, dont_log_wandb=False):
+    for j in range(min(images.shape[0], 4)):
         image = images[j, :, :, :]
         depth = depths[j, :, :, :]
 
@@ -113,13 +113,15 @@ def save_eval_images(images, depths, preds, uncertainty, date_and_time_and_model
             )  # None,None = v.min(), v.max() for color range
         )
 
-        diff = torch.abs(depth - pred)
+        depth_masked = depth > 1e-5
+
+        diff = (torch.abs(depth - pred) + 20)*depth_masked -20
 
         diff_colored = torch.tensor(
             np.transpose(
                 colorize(
                     torch.squeeze(diff, dim=0),
-                    vmin=0,
+                    vmin=-20,
                     vmax=80,
                 ),
                 (2, 0, 1),
@@ -201,12 +203,12 @@ def save_eval_images(images, depths, preds, uncertainty, date_and_time_and_model
                     ),
                     torch.squeeze(value, dim=0).numpy(force=True),
                 )
-
-        log_images(
-            img=image.detach(),
-            depth=depth.detach(),
-            pred=pred.detach(),
-            vmin=cfg.dataset_params.min_depth,
-            vmax=cfg.dataset_params.max_depth,
-            step=(j + 1) * 5000000,
-        )
+        if not dont_log_wandb:
+            log_images(
+                img=image.detach(),
+                depth=depth.detach(),
+                pred=pred.detach(),
+                vmin=cfg.dataset_params.min_depth,
+                vmax=cfg.dataset_params.max_depth,
+                step=(j + 1) * 5000000,
+            )

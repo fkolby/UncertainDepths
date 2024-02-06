@@ -1,3 +1,4 @@
 model_type: "Posthoc_Laplace"
 n_models: 100
 prior_prec: 1
+hessian_multiplicator: 1000

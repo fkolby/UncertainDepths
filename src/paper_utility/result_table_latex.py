@@ -45,15 +45,20 @@ def df_to_latex(
         identification_ids.append(id)
     print("ids", identification_ids)
 
-    df = pd.read_csv(os.path.join(folder_location, "test_resultsoutput_results.csv"))
+    df = pd.read_csv(os.path.join(folder_location, "test_output_results.csv"))
     print(df)
+    print(df.columns)
     df = df.loc[df["identification"].isin(identification_ids)]
     df = df[cols_of_interest]
     df["model_type"] = df["model_type"].map(lambda x: model_names[x])
+    
     df = df.rename(columns=scoring_metrics)
 
     for c in df.columns:
         if df[c].dtype == object and c != "Model type":
+            print(df[c])
+            
+            print(c)
             if df[c][1].startswith("tensor("):
                 df[c] = df[c].map(lambda h: float(h.strip("tensor(").strip(")")))
 
@@ -63,9 +68,10 @@ def df_to_latex(
 
 if __name__ == "__main__":
     filter_identities = [
-        "2024_01_10_03_04_28_1861_Posthoc_Laplace",
-        "2024_01_10_12_54_30_1447_Ensemble",
-        "2024_01_09_01_32_02_1452_Dropout",
+        "2024_01_31_01_02_04_185_Dropout",
+        "2024_01_31_04_51_37_185_Ensemble",
+        "2024_01_30_21_55_26_185_Posthoc_Laplace",
+        "2024_01_30_18_59_42_185_Online_Laplace",
     ]
     df_to_latex(filter_identities=filter_identities)
     df_to_latex(

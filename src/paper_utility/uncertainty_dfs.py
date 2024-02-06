@@ -27,7 +27,7 @@ def gather_model_dfs(identification_strings: [str], df_prefixs=["scaled_", ""]) 
             if model_type == "Laplace":
                 model_type = "_".join(run.split("_")[-2:])
 
-            path = os.path.join(folder_location, run, df_prefix + "uncertainty_df_" + model_type)
+            path = os.path.join(folder_location, run, df_prefix + "uncertainty_df_" + model_type + ".csv")
 
             if i + j == 0:
                 concatenated_df = pd.read_csv(path)
@@ -58,12 +58,20 @@ def save_uncertainty_plots(df, file_prefix):
             print(c)
 
             # axs[i].plot(df[[c]])
-            g = sns.FacetGrid(df, col="Uncertainty type")
-            plot = g.map_dataframe(sns.lineplot, x="Share", y=c, hue="Model Type")
-            plot.add_legend(title="Model")
-            fig = plot
-            fig.savefig(fname=file_prefix + c)
-            # fig.clear()
+            #g = sns.FacetGrid(df, col="Uncertainty type")
+            #plot = g.map_dataframe(sns.lineplot, x="Share", y=c, hue="Model Type")
+            if c in ["Mean Squared Error", "Root Mean Squared Error"]:
+                metric_relevant_uncertainty = " SD"
+            else:
+                metric_relevant_uncertainty = "Scaled SD"
+            df_c = df.loc[df["Uncertainty type"] == metric_relevant_uncertainty]
+            plot = sns.lineplot(data=df_c, hue="Model Type", x = "Share", y=c)
+            plot.set_xlabel("Share - " + metric_relevant_uncertainty)
+            
+
+            fig = plot.get_figure()
+            fig.get_figure().savefig(fname=file_prefix + c)
+            fig.clear()
             """ plt.plot(x = df[["Share"]], df[[c]])
                 plt.xlabel("Uncertainty: Share of predictions")
                 plt.ylabel(c)
@@ -75,9 +83,10 @@ def save_uncertainty_plots(df, file_prefix):
 if __name__ == "__main__":
     aggregate_dfs = gather_model_dfs(
         [
-            "2024_01_10_03_04_28_1861_Posthoc_Laplace",
-            "2024_01_10_12_54_30_1447_Ensemble",
-            "2024_01_09_01_32_02_1452_Dropout",
+            "2024_01_31_01_02_04_185_Dropout",
+            "2024_01_31_04_51_37_185_Ensemble",
+            "2024_01_30_21_55_26_185_Posthoc_Laplace",
+            "2024_01_30_18_59_42_185_Online_Laplace",
         ]
     )
     print(aggregate_dfs.loc[aggregate_dfs["Uncertainty type"] != "scaled"])

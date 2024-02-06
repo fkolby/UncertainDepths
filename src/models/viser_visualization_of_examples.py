@@ -30,7 +30,7 @@ def get_intrinsics(H, W):
 
 
 def img_dicts(picture_folders: [str]):
-    d = {"depth": [], "img": [], "preds": [], "ScaledUncertainty": [], "std_dev": []}
+    d = {"depth": [], "img": [], "preds": [], "ScaledUncertainty": [], "std_dev": [], "diff":[]}
     d = {
         "Posthoc_Laplace": deepcopy(d),
         "Online_Laplace": deepcopy(d),
@@ -239,6 +239,7 @@ def main(picture_folders):
         print("HI")
 
     while True:
+        
         depth = depths_dict[model.value][img_type.value][int(img_num.value[0])]
         if img_type.value == "preds":
             depth = depths_dict[model.value][img_type.value][int(img_num.value[0])]
@@ -366,9 +367,9 @@ def main(picture_folders):
 if __name__ == "__main__":
     main(
         [
-            "2024_01_10_03_04_28_1861_Posthoc_Laplace",
-            "2024_01_05_00_27_33_647_Online_Laplace",
-            "2024_01_10_12_54_30_1447_Ensemble",
-            "2024_01_09_01_32_02_1452_Dropout",
+            "2024_01_25_16_46_47_8006_Posthoc_Laplace",
+            "2024_01_25_14_58_58_8006_Online_Laplace",
+            "2024_01_26_18_56_18_8503_Ensemble",
+            "2024_01_26_19_38_19_8508_Dropout",
         ]
     )
