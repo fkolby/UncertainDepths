@@ -101,7 +101,7 @@ class depth_dataset(Dataset):
                 :,
                 box_y_start : box_y_start + box_y_offset,
                 box_x_start : box_x_start + box_x_offset,
-            ] = torch.rand(3, box_y_offset, box_x_offset)*pink/255
+            ] = torch.ones((3, box_y_offset, box_x_offset))*pink/255
 
             OOD_class = torch.zeros_like(label_img, dtype=torch.int16)  # 0 is in distribution
             OOD_class[

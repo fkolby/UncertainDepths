@@ -50,7 +50,9 @@ def main(cfg: DictConfig):
         }
     else:
         os.environ["WANDB_MODE"] = "online"
-        trainer_args = {"max_epochs": cfg.trainer_args.max_epochs}
+        trainer_args = {"max_epochs": cfg.trainer_args.max_epochs,
+                        "gradient_clip_val":1.0,
+                        }
     
     slurm_id = str(os.environ.get("SLURM_JOB_ID"))
 

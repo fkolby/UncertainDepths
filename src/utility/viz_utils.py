@@ -58,7 +58,7 @@ def denormalize(x, device="cpu"):
     return torch.clamp(out, 0, 1)
 
 
-def log_images(img, depth, pred, vmin, vmax, step):
+def log_images(img, depth, pred, vmin, vmax, step, image_appendix = ""):
     depthdiff = colorize((depth - pred), vmin=vmin, vmax=vmax)
     absdepthdiff = colorize(torch.abs(depth - pred), vmin=vmin, vmax=vmax)
     depth = colorize(depth, vmin=vmin, vmax=vmax)
@@ -72,7 +72,7 @@ def log_images(img, depth, pred, vmin, vmax, step):
         )  # debugging error message of non-matching image sizes - error in WandB UI
     wandb.log(
         {
-            "images": [
+            "images"+image_appendix: [
                 wandb.Image(
                     transforms.ToPILImage()(denormalize(img)),
                     "RGB",

@@ -15,13 +15,13 @@ transforms:
  kb_crop: True
  rotate: True
  flip_LR: True
- rand_aug: True
- rotational_degree: 2.0 
+ rand_aug: False
+ rotational_degree: 1.0 
 hyperparameters:
  learning_rate: 3e-4
  batch_size: 16
 trainer_args:
-  max_epochs: 50
+  max_epochs: 150
 OOD:
   use_white_noise_box_test: True
 defaults: 

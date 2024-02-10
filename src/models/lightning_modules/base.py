@@ -23,10 +23,12 @@ class Base_lightning_module(pl.LightningModule):
         use_full_size_loss=False,
     ):
         super().__init__()
+        
         self.model = model
         self.loss_function = loss_function
         self.lr = cfg.hyperparameters.learning_rate
         self.tstep = 0
+        self.error_logged_imgs=0
         self.min_depth = cfg.dataset_params.min_depth
         self.max_depth = cfg.dataset_params.max_depth
         self.input_height = cfg.dataset_params.input_height
@@ -50,6 +52,7 @@ class Base_lightning_module(pl.LightningModule):
                     cfg=cfg,
                     device="cuda",
                 )
+        self.running_loss = 0
 
     def forward(self, inputs):
         if self.cfg.models.model_type == "Online_Laplace":
@@ -118,9 +121,10 @@ class Base_lightning_module(pl.LightningModule):
 
         print(f"TRAIN:  x: {x.shape} y: {y.shape}, pred: {preds.shape}, tstep: {self.tstep}")
 
+
+
         if self.tstep % 1000 == 0 or (
-            self.tstep < 1000 and self.tstep % 100 == 0
-        ):  # dont log every single image (space issues. (space issues.)
+            self.tstep < 1000 and self.tstep % 100 == 0):  # dont log every single image (space issues. (space issues.)
             log_images(
                 img=x[0, :, :, :].detach(),
                 depth=y[0, :, :, :].detach(),
@@ -129,7 +133,23 @@ class Base_lightning_module(pl.LightningModule):
                 vmax=self.max_depth,
                 step=self.tstep,
             )
+        
+        if loss > 1.5*self.running_loss and self.tstep > 1000 and self.error_logged_imgs < 500:
+            print("Big loss: ", loss, "running loss: ", self.running_loss, "tstep: ", self.tstep)
+            for i in range(x.shape[0]):
+                log_images(
+                    img=x[i, :, :, :].detach(),
+                    depth=y[i, :, :, :].detach(),
+                    pred=preds[i, :, :, :].detach(),
+                    vmin=self.min_depth,
+                    vmax=self.max_depth,
+                    step=self.tstep, 
+                    image_appendix=f"_error_{i}",
+                )
+                self.error_logged_imgs += 1
 
+
+        self.running_loss = 0.9*self.running_loss + 0.1*loss
         self.log("train_loss", loss)
         wandb.log(
             {"train_loss": loss, "learning_rate": self.lr_schedulers().get_last_lr()[0]},
