@@ -1,13 +1,15 @@
 import pandas as pd
 import os
 import torch
+from typing import List
 
 
 def df_to_latex(
-    filter_identities: [str],
-    cols_of_interest=["model_type", "delta1", "delta2", "delta3", "abs_rel", "rmse", "silog"],
-    file_name="test_resultsoutput_results.csv",
+    filter_identities: List[str],
+    cols_of_interest: List[str]= ["model_type", "delta1", "delta2", "delta3", "abs_rel", "rmse", "silog"],
+    file_name: str ="test_resultsoutput_results.csv",
 ):
+    """Turns a dataframe into latex, by converting names into prettier code. Also selects col and row of interest., row being based on filter identitites"""
     scoring_metrics = {
         "delta1": "$\delta_1\\uparrow$",
         "delta2": "$\delta_2\\uparrow$",

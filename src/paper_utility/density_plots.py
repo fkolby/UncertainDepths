@@ -2,6 +2,7 @@ import torch
 import numpy as np
 
 import pandas as pd
+from typing import List
 import seaborn as sns
 import os
 import matplotlib.pyplot as plt
@@ -11,7 +12,7 @@ from sklearn.metrics import roc_curve, auc
 
 seed_everything(seed=442)
 
-def density_plot(idents:[str]) -> None:
+def density_plot(idents: List[str]) -> None:
     folder_location = "/home/jbv415/UncertainDepths/src/models/outputs/roc_curves/"
     lst = []
     for i, ident in enumerate(idents):
