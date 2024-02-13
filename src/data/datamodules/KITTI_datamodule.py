@@ -41,10 +41,8 @@ class KITTI_datamodule(base_datamodule):
                     train_val_set,
                     np.arange(0, 16525, dtype=int).tolist(),
                 )  # corresponds to 86% of dataset, while still being a different drive.
-                
-                self.val_set = Subset(
-                    train_val_set, np.arange(16525, 18525, dtype=int).tolist()
-                )
+
+                self.val_set = Subset(train_val_set, np.arange(16525, 18525, dtype=int).tolist())
                 print("len of train-vallength: ", len(train_val_set))
 
                 self.test_set = Subset(

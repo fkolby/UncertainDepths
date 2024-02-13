@@ -6,10 +6,19 @@ from typing import List
 
 def df_to_latex(
     filter_identities: List[str],
-    cols_of_interest: List[str]= ["model_type", "delta1", "delta2", "delta3", "abs_rel", "rmse", "silog"],
-    file_name: str ="test_resultsoutput_results.csv",
+    cols_of_interest: List[str] = [
+        "model_type",
+        "delta1",
+        "delta2",
+        "delta3",
+        "abs_rel",
+        "rmse",
+        "silog",
+    ],
+    file_name: str = "test_resultsoutput_results.csv",
 ):
     """Turns a dataframe into latex, by converting names into prettier code. Also selects col and row of interest., row being based on filter identitites"""
+
     scoring_metrics = {
         "delta1": "$\delta_1\\uparrow$",
         "delta2": "$\delta_2\\uparrow$",
@@ -53,13 +62,13 @@ def df_to_latex(
     df = df.loc[df["identification"].isin(identification_ids)]
     df = df[cols_of_interest]
     df["model_type"] = df["model_type"].map(lambda x: model_names[x])
-    
+
     df = df.rename(columns=scoring_metrics)
 
     for c in df.columns:
         if df[c].dtype == object and c != "Model type":
             print(df[c])
-            
+
             print(c)
             if df[c][1].startswith("tensor("):
                 df[c] = df[c].map(lambda h: float(h.strip("tensor(").strip(")")))

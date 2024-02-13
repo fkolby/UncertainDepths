@@ -27,7 +27,9 @@ def gather_model_dfs(identification_strings: [str], df_prefixs=["scaled_", ""]) 
             if model_type == "Laplace":
                 model_type = "_".join(run.split("_")[-2:])
 
-            path = os.path.join(folder_location, run, df_prefix + "uncertainty_df_" + model_type + ".csv")
+            path = os.path.join(
+                folder_location, run, df_prefix + "uncertainty_df_" + model_type + ".csv"
+            )
 
             if i + j == 0:
                 concatenated_df = pd.read_csv(path)
@@ -58,16 +60,15 @@ def save_uncertainty_plots(df, file_prefix):
             print(c)
 
             # axs[i].plot(df[[c]])
-            #g = sns.FacetGrid(df, col="Uncertainty type")
-            #plot = g.map_dataframe(sns.lineplot, x="Share", y=c, hue="Model Type")
+            # g = sns.FacetGrid(df, col="Uncertainty type")
+            # plot = g.map_dataframe(sns.lineplot, x="Share", y=c, hue="Model Type")
             if c in ["Mean Squared Error", "Root Mean Squared Error"]:
                 metric_relevant_uncertainty = " SD"
             else:
                 metric_relevant_uncertainty = "Scaled SD"
             df_c = df.loc[df["Uncertainty type"] == metric_relevant_uncertainty]
-            plot = sns.lineplot(data=df_c, hue="Model Type", x = "Share", y=c)
+            plot = sns.lineplot(data=df_c, hue="Model Type", x="Share", y=c)
             plot.set_xlabel("Share - " + metric_relevant_uncertainty)
-            
 
             fig = plot.get_figure()
             fig.get_figure().savefig(fname=file_prefix + c)

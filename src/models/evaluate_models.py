@@ -45,7 +45,7 @@ def eval_model(
     else:
         device = "cpu"
 
-    #set up saving directories
+    # set up saving directories
     date_and_time_and_model = (
         datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         + "_"
@@ -65,9 +65,8 @@ def eval_model(
         os.path.join(cfg.save_images_path, "plots/", date_and_time_and_model), exist_ok=True
     )
     i = 0
-    
 
-    #Calculate hessians and priors for those models
+    # Calculate hessians and priors for those models
     if cfg.models.model_type == "Posthoc_Laplace":
         hessian_calculator = MSEHessianCalculator(
             hessian_shape="diag", approximation_accuracy="approx"
@@ -80,13 +79,16 @@ def eval_model(
             a += 1
             # compute hessian approximation
             print(a, "of ", len(dataloader_for_hessian), flush=True)
-            hessian += hessian_calculator.compute_hessian(
-                x=image.to(device),
-                model=model.stochastic_net,
-            )*cfg.models.hessian_multiplicator
+            hessian += (
+                hessian_calculator.compute_hessian(
+                    x=image.to(device),
+                    model=model.stochastic_net,
+                )
+                * cfg.models.hessian_multiplicator
+            )
             if cfg.in_debug and a > 25:
                 break
-        
+
         print("Done calcing hessian")
         mean_parameter = torch.nn.utils.parameters_to_vector(model.parameters())
 
@@ -103,7 +105,7 @@ def eval_model(
         if kwargs.get("dont_optimize_prior_prec", False):
             print("prior_pres")
             prior_precision = cfg.prior_prec
-            
+
         print(f"prior precision: {prior_precision}")
     if cfg.models.model_type == "Online_Laplace":
         hessian = kwargs.pop("online_hessian")
@@ -116,10 +118,8 @@ def eval_model(
                 n_steps=5000,
             )
         if kwargs.get("dont_optimize_prior_prec", False):
-            prior_precision = cfg.prior_prec   
+            prior_precision = cfg.prior_prec
         print(f"prior precision: {prior_precision}")
-
-
 
     # ======================================================   PREDICTING  ===============================================
 
@@ -129,8 +129,7 @@ def eval_model(
     filtered_scaled_uncertainty_all_samples = torch.Tensor().to(device="cpu")
     scaled_uncertainty_all_pixels = torch.tensor([]).to(device="cuda")
     uncertainty_all_pixels = torch.tensor([]).to(device="cuda")
-    OOD_class_all_pixels= torch.tensor([]).to(device="cuda")
-
+    OOD_class_all_pixels = torch.tensor([]).to(device="cuda")
 
     if cfg.OOD.use_white_noise_box_test:
         # in that case we should sort by class, so see whether uncertainties are higher on OOD.
@@ -196,7 +195,11 @@ def eval_model(
                 )  # dimensions: model, batch, color, height, width.
                 for model_idx in range(cfg.models.n_models):
                     model_path = kwargs.get("model_path")
-                    model.load_state_dict(torch.load(os.path.join(model_path,f"{cfg.models.model_type}_{model_idx}.pt")))
+                    model.load_state_dict(
+                        torch.load(
+                            os.path.join(model_path, f"{cfg.models.model_type}_{model_idx}.pt")
+                        )
+                    )
                     print(model)
                     preds[j, :, :, :, :] = torch.unsqueeze(model(images), dim=0).to(
                         device="cpu"
@@ -254,8 +257,9 @@ def eval_model(
 
         if cfg.save_images and i == 0:
             if cfg.models.model_type not in [
-            "Posthoc_Laplace",
-            "Online_Laplace",]:
+                "Posthoc_Laplace",
+                "Online_Laplace",
+            ]:
                 save_eval_images(
                     images=images,
                     depths=depths,
@@ -288,7 +292,7 @@ def eval_model(
         else:
             pred = preds  # only named preds for consistency with other models - naming here might be worth rewriting.
             # uncertainty already=uncertainty
-        
+
         print(psutil.virtual_memory(), flush=True)
 
         scaled_uncertainty_uncolored = uncertainty / pred
@@ -347,13 +351,27 @@ def eval_model(
                     scaled_uncertainty_whitenoise[OOD_class == 1].flatten(),
                 ]
             )
-        #need in full length for kdeplot. as running out of cpu mem, dont move to cpu.
-        
+        # need in full length for kdeplot. as running out of cpu mem, dont move to cpu.
+
         if i <= 50:
-            uncertainty_all_pixels = torch.concat([uncertainty_all_pixels,uncertainty.to(device="cuda")])
-            OOD_class_all_pixels = torch.concat([OOD_class_all_pixels,OOD_class_unfiltered])
-            scaled_uncertainty_all_pixels = torch.concat([scaled_uncertainty_all_pixels,uncertainty.to(device="cuda").sqrt()/pred.to(device="cuda")])
-            print("uncertainty:",uncertainty_all_pixels.shape,"ood:" , OOD_class_all_pixels.shape, "scaled:", scaled_uncertainty_all_pixels.shape)
+            uncertainty_all_pixels = torch.concat(
+                [uncertainty_all_pixels, uncertainty.to(device="cuda")]
+            )
+            OOD_class_all_pixels = torch.concat([OOD_class_all_pixels, OOD_class_unfiltered])
+            scaled_uncertainty_all_pixels = torch.concat(
+                [
+                    scaled_uncertainty_all_pixels,
+                    uncertainty.to(device="cuda").sqrt() / pred.to(device="cuda"),
+                ]
+            )
+            print(
+                "uncertainty:",
+                uncertainty_all_pixels.shape,
+                "ood:",
+                OOD_class_all_pixels.shape,
+                "scaled:",
+                scaled_uncertainty_all_pixels.shape,
+            )
 
         depths, pred, uncertainty = filter_valid(depths, pred, uncertainty=uncertainty, config=cfg)
 
@@ -362,27 +380,34 @@ def eval_model(
         uncertainty.to("cpu")
         scaled_uncertainty_uncolored = uncertainty.sqrt() / pred
 
-
         print(depths.device, filtered_depths_all_samples.device)
-        print(filtered_depths_all_samples.shape, filtered_uncertainty_all_samples.shape, filtered_preds_all_samples.shape)
+        print(
+            filtered_depths_all_samples.shape,
+            filtered_uncertainty_all_samples.shape,
+            filtered_preds_all_samples.shape,
+        )
         print(depths.shape, uncertainty.shape, pred.shape)
 
         print(torch.cuda.memory_summary())
 
-        # protect against ram, cpu-ram OOM. 
+        # protect against ram, cpu-ram OOM.
         filtered_depths_all_samples = torch.cat(
             [filtered_depths_all_samples, torch.flatten(depths).to("cpu")]
         )  # flatten to ensure sorting by uncertainty.
-        filtered_preds_all_samples = torch.cat([filtered_preds_all_samples, torch.flatten(pred).to("cpu")])
+        filtered_preds_all_samples = torch.cat(
+            [filtered_preds_all_samples, torch.flatten(pred).to("cpu")]
+        )
         filtered_uncertainty_all_samples = torch.cat(
             [filtered_uncertainty_all_samples, torch.flatten(uncertainty).to("cpu")]
         )
         filtered_scaled_uncertainty_all_samples = torch.cat(
-            [filtered_scaled_uncertainty_all_samples, torch.flatten(scaled_uncertainty_uncolored).to("cpu")]
+            [
+                filtered_scaled_uncertainty_all_samples,
+                torch.flatten(scaled_uncertainty_uncolored).to("cpu"),
+            ]
         )
         print(psutil.virtual_memory(), flush=True)
         i += 1
-    
 
     if cfg.OOD.use_white_noise_box_test:  # log it.
         print(
@@ -397,7 +422,8 @@ def eval_model(
             "scaled uncertainty out of distribution",
             scaled_uncertainty_out_of_distribution.mean(),
             "\n",
-            "=" * 20,flush=True,
+            "=" * 20,
+            flush=True,
         )
         print(psutil.virtual_memory(), flush=True)
         unscaled_kde_data = pd.concat(
@@ -436,22 +462,21 @@ def eval_model(
         print("gothere!", 1, flush=True)
 
         unscaled_kde_data.to_csv(
-        os.path.join(
-            cfg.save_images_path,
-            "uncertainty_df/",
-            date_and_time_and_model,
-            f"unscaled_kde_data_{cfg.models.model_type}.csv",
-        ),
+            os.path.join(
+                cfg.save_images_path,
+                "uncertainty_df/",
+                date_and_time_and_model,
+                f"unscaled_kde_data_{cfg.models.model_type}.csv",
+            ),
         )
         scaled_kde_data.to_csv(
-        os.path.join(
-            cfg.save_images_path,
-            "uncertainty_df/",
-            date_and_time_and_model,
-            f"scaled_kde_data_{cfg.models.model_type}.csv",
-        ),
+            os.path.join(
+                cfg.save_images_path,
+                "uncertainty_df/",
+                date_and_time_and_model,
+                f"scaled_kde_data_{cfg.models.model_type}.csv",
+            ),
         )
-
 
         ## GENERATES OOM
         """  
@@ -474,12 +499,13 @@ def eval_model(
 
     print("gothere!", 2, flush=True)
     _, sort_by_uncertainty_ascending_indices = torch.sort(filtered_uncertainty_all_samples)
-    _, sort_by_scaled_uncertainty_ascending_indices = torch.sort(filtered_scaled_uncertainty_all_samples)
+    _, sort_by_scaled_uncertainty_ascending_indices = torch.sort(
+        filtered_scaled_uncertainty_all_samples
+    )
 
     del filtered_scaled_uncertainty_all_samples
     del filtered_uncertainty_all_samples
     del model
-
 
     print(
         "sum of absolute differences in ranking:",
@@ -489,7 +515,7 @@ def eval_model(
                 - torch.tensor(sort_by_uncertainty_ascending_indices)
             )
         ),
-        flush=True
+        flush=True,
     )
     print(
         "count of absolute differences in ranking:",
@@ -500,7 +526,7 @@ def eval_model(
             )
             > 0
         ),
-        flush=True
+        flush=True,
     )
 
     losses = calc_loss_metrics(
@@ -510,7 +536,7 @@ def eval_model(
 
     def uncertainty_results_df(fineness, sorted_preds, sorted_targets):
         if cfg.in_debug:
-            fineness=10
+            fineness = 10
         df = pd.DataFrame(
             columns=["Share"]
             + [el for el in calc_loss_metrics(sorted_preds, sorted_targets).keys()]
@@ -588,39 +614,37 @@ def eval_model(
             f"scaled_plot_{cfg.models.model_type}_",
         ),
     )
-    
-
 
     print(OOD_class_all_pixels.shape, scaled_uncertainty_all_pixels.shape)
 
     torch.save(
-            OOD_class_all_pixels,
-            os.path.join(
+        OOD_class_all_pixels,
+        os.path.join(
             cfg.save_images_path,
             "roc_curves/",
             date_and_time_and_model,
             f"OOD_class_all_pixels.pt",
-            )            
-        )
+        ),
+    )
     torch.save(
-            scaled_uncertainty_all_pixels,
-            os.path.join(
+        scaled_uncertainty_all_pixels,
+        os.path.join(
             cfg.save_images_path,
             "roc_curves/",
             date_and_time_and_model,
             f"scaled_uncertainty_all_pixels.pt",
-            )            
-        )
+        ),
+    )
     torch.save(
-            uncertainty_all_pixels,
-            os.path.join(
+        uncertainty_all_pixels,
+        os.path.join(
             cfg.save_images_path,
             "roc_curves/",
             date_and_time_and_model,
             f"_uncertainty_all_pixels.pt",
-            )            
-        )
-    
+        ),
+    )
+
     """  
     # Classify OOD by variance ROC
     scaled_roc_curve_fpr, scaled_roc_curve_tpr, _ = roc_curve(
@@ -718,17 +742,15 @@ def eval_model(
         )
         out_df["identification"] = "_".join(date_and_time_and_model.split("_")[:-1])
         out_df.to_csv(file_name, index=False)
-    
+
     if not dont_log_wandb:
-            wandb.log(
-                {
-                    "uncertainty In distribution:": uncertainty_in_distribution.mean(),
-                    "uncertainty out of distribution": uncertainty_out_of_distribution.mean(),
-                    "scaled uncertainty in distribution": scaled_uncertainty_in_distribution.mean(),
-                    "scaled uncertainty out of distribution": scaled_uncertainty_out_of_distribution.mean(),
-                }
-            )
-
-
+        wandb.log(
+            {
+                "uncertainty In distribution:": uncertainty_in_distribution.mean(),
+                "uncertainty out of distribution": uncertainty_out_of_distribution.mean(),
+                "scaled uncertainty in distribution": scaled_uncertainty_in_distribution.mean(),
+                "scaled uncertainty out of distribution": scaled_uncertainty_out_of_distribution.mean(),
+            }
+        )
 
     return metrics

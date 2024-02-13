@@ -75,7 +75,9 @@ def filter_valid(
     return gt_depth[valid_mask], pred[valid_mask], uncertainty[valid_mask]
 
 
-def save_eval_images(images, depths, preds, uncertainty, date_and_time_and_model, cfg, dont_log_wandb=False):
+def save_eval_images(
+    images, depths, preds, uncertainty, date_and_time_and_model, cfg, dont_log_wandb=False
+):
     for j in range(min(images.shape[0], 4)):
         image = images[j, :, :, :]
         depth = depths[j, :, :, :]
@@ -115,7 +117,7 @@ def save_eval_images(images, depths, preds, uncertainty, date_and_time_and_model
 
         depth_masked = depth > 1e-5
 
-        diff = (torch.abs(depth - pred) + 20)*depth_masked -20
+        diff = (torch.abs(depth - pred) + 20) * depth_masked - 20
 
         diff_colored = torch.tensor(
             np.transpose(

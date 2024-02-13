@@ -128,10 +128,16 @@ class OnlineLaplace:
                     update_this_step = (not self.cfg.models.update_hessian_probabilistically) or (
                         np.random.rand() <= (1 / self.cfg.models.update_hessian_every)
                     )
-                    print((1 / self.cfg.models.update_hessian_every), (not self.cfg.models.update_hessian_probabilistically) or (
-                        np.random.rand() <= (1 / self.cfg.models.update_hessian_every), np.random.rand(), (
-                        np.random.rand() <= (1 / self.cfg.models.update_hessian_every)
-                    )), flush=True)
+                    print(
+                        (1 / self.cfg.models.update_hessian_every),
+                        (not self.cfg.models.update_hessian_probabilistically)
+                        or (
+                            np.random.rand() <= (1 / self.cfg.models.update_hessian_every),
+                            np.random.rand(),
+                            (np.random.rand() <= (1 / self.cfg.models.update_hessian_every)),
+                        ),
+                        flush=True,
+                    )
                     print("samplingactually", flush=True)
                     if update_this_step:
                         print("updatehessian!", flush=True)
@@ -156,24 +162,34 @@ class OnlineLaplace:
                 )  # mean(hessians)/constant #ask about this
 
                 if self.cfg.models.use_exp_average_instead:
-                    self.hessian = temp_hessian*(1-hessian_memory_factor) + hessian_memory_factor*self.hessian
+                    self.hessian = (
+                        temp_hessian * (1 - hessian_memory_factor)
+                        + hessian_memory_factor * self.hessian
+                    )
                     self.hessian_change_abs = torch.mean(
-                        torch.abs(temp_hessian + hessian_memory_factor * self.hessian - self.hessian)
+                        torch.abs(
+                            temp_hessian + hessian_memory_factor * self.hessian - self.hessian
+                        )
                     )
                     self.hessian_change_signed = torch.mean(
                         temp_hessian + hessian_memory_factor * self.hessian - self.hessian
                     )
-                
-                else:
 
+                else:
                     self.hessian_change_abs = torch.mean(
-                        torch.abs(temp_hessian + hessian_memory_factor * self.hessian - self.hessian)
+                        torch.abs(
+                            temp_hessian + hessian_memory_factor * self.hessian - self.hessian
+                        )
                     )
                     self.hessian_change_signed = torch.mean(
                         temp_hessian + hessian_memory_factor * self.hessian - self.hessian
-                    ) 
-                    self.hessian = torch.clamp(temp_hessian + hessian_memory_factor * self.hessian, min = self.hessian*0.5**(1/1000)+1e-8, max=self.hessian*2**(1/1000) + 1e-8)
-                    
+                    )
+                    self.hessian = torch.clamp(
+                        temp_hessian + hessian_memory_factor * self.hessian,
+                        min=self.hessian * 0.5 ** (1 / 1000) + 1e-8,
+                        max=self.hessian * 2 ** (1 / 1000) + 1e-8,
+                    )
+
             else:
                 self.hessian_change_abs = torch.zeros_like(mu_q)
                 self.change_signed = torch.zeros_like(mu_q)

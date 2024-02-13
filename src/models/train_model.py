@@ -50,10 +50,11 @@ def main(cfg: DictConfig):
         }
     else:
         os.environ["WANDB_MODE"] = "online"
-        trainer_args = {"max_epochs": cfg.trainer_args.max_epochs,
-                        "gradient_clip_val":1.0,
-                        }
-    
+        trainer_args = {
+            "max_epochs": cfg.trainer_args.max_epochs,
+            "gradient_clip_val": 1.0,
+        }
+
     slurm_id = str(os.environ.get("SLURM_JOB_ID"))
 
     wandb_run = wandb.init(
@@ -66,7 +67,7 @@ def main(cfg: DictConfig):
         + "_"
         + datetime.now().strftime("%d_%m_%Y_%H"),
     )
-    OmegaConf.update(cfg, "wandb_run_id", wandb_run._run_id, force_add = True)
+    OmegaConf.update(cfg, "wandb_run_id", wandb_run._run_id, force_add=True)
 
     wandb_run.log_code(
         "~/UncertainDepths/src",
@@ -83,18 +84,12 @@ def main(cfg: DictConfig):
     log.info(OmegaConf.to_yaml(cfg))
 
     date_and_time_and_model = (
-                datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-                + "_"
-                + slurm_id
-                + "_"
-                + cfg.models.model_type
-            )
-    
+        datetime.now().strftime("%Y_%m_%d_%H_%M_%S") + "_" + slurm_id + "_" + cfg.models.model_type
+    )
+
     model_path = os.path.join(cfg.save_images_path, "model_setup/", date_and_time_and_model)
 
     os.makedirs(model_path)
-
-
 
     # =========================== TRANSFORMS & DATAMODULES ===============================================
     seed_everything(cfg.seed)
@@ -174,14 +169,15 @@ def main(cfg: DictConfig):
                 train_dataloaders=datamodule.train_dataloader(),
                 val_dataloaders=datamodule.val_dataloader(),
             )
-            trainer.save_checkpoint(os.path.join(model_path,f"{cfg.models.model_type}.ckpt"))
+            trainer.save_checkpoint(os.path.join(model_path, f"{cfg.models.model_type}.ckpt"))
             # now we dont need (or want) lightning anymore
             torch.save(
                 model._modules["model"].state_dict(),
-                os.path.join(model_path,f"{cfg.models.model_type}.pt"),
+                os.path.join(model_path, f"{cfg.models.model_type}.pt"),
             )
-            OmegaConf.save(config=cfg,f=os.path.join(model_path, f"{cfg.models.model_type}_config.yaml"))
-
+            OmegaConf.save(
+                config=cfg, f=os.path.join(model_path, f"{cfg.models.model_type}_config.yaml")
+            )
 
             ## free up memory again
             del trainer
@@ -198,7 +194,7 @@ def main(cfg: DictConfig):
                 eval_model(
                     model=model,
                     test_loader=datamoduleEval.test_dataloader(),
-                    dataloader_for_hessian=datamodule.val_dataloader(), 
+                    dataloader_for_hessian=datamodule.val_dataloader(),
                     cfg=cfg,
                 ),
                 step=50000,
@@ -222,17 +218,20 @@ def main(cfg: DictConfig):
                 train_dataloaders=datamodule.train_dataloader(),
                 val_dataloaders=datamodule.val_dataloader(),
             )
-            trainer.save_checkpoint(os.path.join(model_path,f"{cfg.models.model_type}.ckpt"))
+            trainer.save_checkpoint(os.path.join(model_path, f"{cfg.models.model_type}.ckpt"))
             # now we dont need (or want) lightning anymore
             torch.save(
                 model._modules["model"].state_dict(),
-                os.path.join(model_path,f"{cfg.models.model_type}.pt"),
+                os.path.join(model_path, f"{cfg.models.model_type}.pt"),
             )
-            OmegaConf.save(config=cfg,f=os.path.join(model_path, f"{cfg.models.model_type}_config.yaml"))
-
+            OmegaConf.save(
+                config=cfg, f=os.path.join(model_path, f"{cfg.models.model_type}_config.yaml")
+            )
 
             print(type(trainer.model.Online_Laplace))
-            trainer.model.Online_Laplace.save_hessian(os.path.join(model_path,f"{cfg.models.model_type}_hessian.pt"))
+            trainer.model.Online_Laplace.save_hessian(
+                os.path.join(model_path, f"{cfg.models.model_type}_hessian.pt")
+            )
             ## free up memory again
             del trainer
             del model
@@ -286,15 +285,16 @@ def main(cfg: DictConfig):
                     train_dataloaders=datamodule.train_dataloader(),
                     val_dataloaders=datamodule.val_dataloader(),
                 )
-                     
-                trainer.save_checkpoint(os.path.join(model_path,f"{cfg.models.model_type}.ckpt"))
+
+                trainer.save_checkpoint(os.path.join(model_path, f"{cfg.models.model_type}.ckpt"))
                 # now we dont need (or want) lightning anymore
                 torch.save(
                     model._modules["model"].state_dict(),
-                    os.path.join(model_path,f"{cfg.models.model_type}_{i}.pt"),
+                    os.path.join(model_path, f"{cfg.models.model_type}_{i}.pt"),
                 )
-                OmegaConf.save(config=cfg,f=os.path.join(model_path, f"{cfg.models.model_type}_config.yaml"))
-
+                OmegaConf.save(
+                    config=cfg, f=os.path.join(model_path, f"{cfg.models.model_type}_config.yaml")
+                )
 
                 ## free up memory again
                 del trainer
@@ -343,15 +343,16 @@ def main(cfg: DictConfig):
                 train_dataloaders=datamodule.train_dataloader(),
                 val_dataloaders=datamodule.test_dataloader(),
             )
-                 
-            trainer.save_checkpoint(os.path.join(model_path,f"{cfg.models.model_type}.ckpt"))
+
+            trainer.save_checkpoint(os.path.join(model_path, f"{cfg.models.model_type}.ckpt"))
             # now we dont need (or want) lightning anymore
             torch.save(
                 model._modules["model"].state_dict(),
-                os.path.join(model_path,f"{cfg.models.model_type}.pt"),
+                os.path.join(model_path, f"{cfg.models.model_type}.pt"),
             )
-            OmegaConf.save(config=cfg,f=os.path.join(model_path, f"{cfg.models.model_type}_config.yaml"))
-
+            OmegaConf.save(
+                config=cfg, f=os.path.join(model_path, f"{cfg.models.model_type}_config.yaml")
+            )
 
             # free up memory
             del trainer
