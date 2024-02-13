@@ -6,7 +6,7 @@ from torch import nn
 import os
 from typing import List
 import torch
-
+from omegaconf import DictConfig
 
 from src.utility.debug_utils import time_since_previous_log
 from src.utility.viz_utils import calc_loss_metrics, colorize, denormalize, log_images
