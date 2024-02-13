@@ -1,10 +1,9 @@
 import pdb
 import time
 from typing import Literal, Union
-
 import torch
 import torchvision
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 from torch import Tensor, nn
 from torchinfo import summary
 
@@ -64,7 +63,8 @@ class InputDropout(nn.Dropout):
 
 
 class stochastic_unet(torch.nn.Module):
-    def __init__(self, in_channels, out_channels, cfg=None, dropout_version=False):
+    """Base unet for models in report"""
+    def __init__(self, in_channels:int, out_channels:int, cfg=Union[None,DictConfig], dropout_version:bool=False):
         super().__init__()
         if cfg:
             multiplication_factor = cfg.neural_net_param_multiplication_factor

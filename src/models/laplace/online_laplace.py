@@ -1,5 +1,5 @@
 import time
-
+from omegaconf import DictConfig
 import torch
 from pytorch_laplace.hessian.mse import MSEHessianCalculator
 from pytorch_laplace.laplace.online_diag import OnlineDiagLaplace
@@ -10,7 +10,8 @@ import numpy as np
 
 
 class OnlineLaplace:
-    def __init__(self, net, dataset_size, loss_function, cfg, device, **kwargs):
+    def __init__(self, net, dataset_size: int, loss_function: torch.nn, cfg: DictConfig, device:str, **kwargs):
+        """Class for Online Laplace training and inference. """
         self.cfg = cfg
         self.net = net
         self.dataset_size = dataset_size
