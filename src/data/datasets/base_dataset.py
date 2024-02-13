@@ -7,6 +7,9 @@ from omegaconf import DictConfig, OmegaConf
 
 
 class depth_dataset(Dataset):
+    """Creates preprocessing on a tensor, and finds images in dataset. 
+    Randaugment may be slightly unstable (but not tested after non-exploding gradient era.)
+    Classes who inherits this must implement get pilimage method."""
     def __init__(
         self,
         cfg: DictConfig,
