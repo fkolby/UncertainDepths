@@ -9,7 +9,8 @@ import torch
 from omegaconf import DictConfig, OmegaConf
 
 
-def retry(how_many_tries=2):
+def retry(how_many_tries:int = 2):
+    """A decorator, which retries to run a function how_many_tries times"""
     def wrapper(func):
         def try_it(*args, **kwargs):
             tries = 0
@@ -51,9 +52,9 @@ def plot_and_save_tensor_as_fig(tensor: torch.Tensor, figname: str) -> None:
     plt.savefig(figname + ".png")
 
 
-# Shamelessly stolen from adabins repo( https://github.com/shariqfarooq123/AdaBins/blob/main/dataloader.py)
-def random_crop(img, depth, height, width):
-    # not terribly good - could be updated so randint goes from - to +, in order not to always include 0,0 e.g.
+# Shamelessly stolen from adabins repo( https://github.com/shariqfarooq123/AdaBins/blob/main/dataloader.py) but added doc.
+def random_crop(img: torch.Tensor, depth: torch.Tensor, height:int, width:int):
+    """Crops a image randomly. """
     try:
         assert img.shape[1] >= height
         assert img.shape[2] >= width

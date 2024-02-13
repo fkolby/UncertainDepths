@@ -3,9 +3,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import seaborn as sns
+from typing import List
 
 
-def gather_model_dfs(identification_strings: [str], df_prefixs=["scaled_", ""]) -> pd.DataFrame:
+def gather_model_dfs(identification_strings: List[str], df_prefixs : List[str] = ["scaled_", ""]) -> pd.DataFrame:
+    """Join category, model dataframes based into longformat. Here category is a dataframe with uncertainties of given type, and identification strings
+    Give identifications of model."""
+
+
     scoring_metrics = {
         "delta1": "Delta 1",
         "delta2": "Delta 2",
@@ -55,6 +60,9 @@ def gather_model_dfs(identification_strings: [str], df_prefixs=["scaled_", ""]) 
 
 
 def save_uncertainty_plots(df, file_prefix):
+    """Generates monotonicty plots of different metrics, e.g. RMSE, MSE or the like, sorted by some other metric, e.g. uncertainty"""
+
+    
     for i, c in enumerate(df.columns):
         if c not in ["Share", "Model Type", "identifier", "Uncertainty type"]:
             print(c)

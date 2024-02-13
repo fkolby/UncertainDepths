@@ -4,6 +4,8 @@ import numpy as np
 import torch
 from torch import nn
 import os
+from typing import List
+import torch
 
 
 from src.utility.debug_utils import time_since_previous_log
@@ -14,18 +16,19 @@ from torchvision import transforms
 
 # shamelessly inspired by Zoedepth
 def filter_valid(
-    gt,
-    pred,
-    uncertainty,
-    interpolate=True,
-    garg_crop=True,
-    eigen_crop=False,
-    dataset="kitti",
-    min_depth_eval=1e-3,
-    max_depth_eval=80,
+    gt : torch.Tensor,
+    pred : torch.Tensor,
+    uncertainty: torch.Tensor,
+    interpolate: bool = True,
+    garg_crop: bool = True,
+    eigen_crop: bool = False,
+    dataset: str= "kitti",
+    min_depth_eval: float =1e-3,
+    max_depth_eval: float=80,
     **kwargs,
-):
+) -> tuple(torch.Tensor, torch.Tensor, torch.Tensor):
     """Compute metrics of predicted depth maps. Applies cropping and masking as necessary or specified via arguments. Refer to compute_errors for more details on metrics."""
+
     if "config" in kwargs:
         config = kwargs["config"]
         eigen_crop = config.eval_eigen_crop
@@ -76,8 +79,9 @@ def filter_valid(
 
 
 def save_eval_images(
-    images, depths, preds, uncertainty, date_and_time_and_model, cfg, dont_log_wandb=False
-):
+    images: torch.Tensor, depths: torch.Tensor, preds: torch.Tensor, uncertainty: torch.Tensor, date_and_time_and_model: str, cfg: DictConfig, dont_log_wandb=False
+) -> None: 
+    
     for j in range(min(images.shape[0], 4)):
         image = images[j, :, :, :]
         depth = depths[j, :, :, :]
