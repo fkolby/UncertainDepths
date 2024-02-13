@@ -1,7 +1,7 @@
 UncertainDepths
 ==============================
 
-Estimating depths from a single image, with uncertainty.
+Estimating depths from a single image, with *reliable* uncertainty.
 
 Project Organization
 ------------
