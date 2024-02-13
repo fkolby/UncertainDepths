@@ -11,12 +11,12 @@ import numpy as np
 import torch
 from torchvision.transforms import Resize
 from pprint import pprint
+from typing import List
 
 import viser
 
 
-def get_intrinsics(H, W):
-    # Inspired by gradio demo of ZoeDepth
+def get_intrinsics(H:float, W:float) -> torch.Tensor:# Inspired by gradio demo of ZoeDepth
     """
     Intrinsics for a pinhole camera model.
     Assume fov of 55 degrees and central principal point.
@@ -29,7 +29,10 @@ def get_intrinsics(H, W):
     )
 
 
-def img_dicts(picture_folders: [str]):
+def img_dicts(picture_folders: List[str]) -> dict[str,dict[str,List[torch.Tensor]]]:
+    """Generates a dictionary to be indexed by viser tool for 3D visualizations.
+    Takes images from picture folders"""
+
     d = {"depth": [], "img": [], "preds": [], "ScaledUncertainty": [], "std_dev": [], "diff": []}
     d = {
         "Posthoc_Laplace": deepcopy(d),
@@ -125,7 +128,8 @@ def img_dicts(picture_folders: [str]):
     return d
 
 
-def main(picture_folders):
+def main(picture_folders: List[str]) -> None:
+    """Setups a viser server (locally) running 3D simulations for viewing (erroneous) predictions."""
     server = viser.ViserServer()
     depths_dict = img_dicts(picture_folders=picture_folders)
     print(depths_dict)

@@ -5,7 +5,7 @@ import torchvision
 
 # heavily inspired by zoedepth (https://github.com/isl-org/ZoeDepth/blob/main/evaluate.py).
 @torch.no_grad()
-def infer(model, images, **kwargs):
+def infer(model, images: torch.Tesnor, **kwargs) -> torch.Tensor:
     """Inference with flip augmentation"""
 
     # images.shape = N, C, H, W
