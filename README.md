@@ -13,7 +13,6 @@
 
 
 
-While other methods fail in predicting high uncertainty -> high loss, Online Laplace is reliable across all standard loss metrics.
 
 
 ### Only Online Laplace has monotonically increasing error in uncertainty.
