@@ -14,9 +14,10 @@ seed_everything(seed=442)
 
 
 def density_plot(idents: List[str]) -> None:
-    """Produces an aggregated roc-curve based on predicting OOD. 
-    For each ident in idents, it generates such a roc-curve by predicting high uncertainty=OOD. 
-    idents is a folder path with predictions of uncertainty of pixels and labelling of whether they are OOD. For more info, see report."""
+    """Produces an aggregated roc-curve based on predicting OOD.
+    For each ident in idents, it generates such a roc-curve by predicting high uncertainty=OOD.
+    idents is a folder path with predictions of uncertainty of pixels and labelling of whether they are OOD. For more info, see report.
+    """
 
     folder_location = "/home/jbv415/UncertainDepths/src/models/outputs/roc_curves/"
     lst = []

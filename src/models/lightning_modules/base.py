@@ -13,8 +13,9 @@ from pytorch_lightning.utilities.seed import isolate_rng
 
 
 class Base_lightning_module(pl.LightningModule):
-    """lightning module for training - used for Dropout, Ensemble, and Laplace models. 
+    """lightning module for training - used for Dropout, Ensemble, and Laplace models.
     Online Laplace laplace is created as an somewhat unelegant methodimplementation."""
+
     def __init__(
         self,
         model,

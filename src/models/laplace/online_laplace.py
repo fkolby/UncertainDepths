@@ -10,8 +10,16 @@ import numpy as np
 
 
 class OnlineLaplace:
-    def __init__(self, net, dataset_size: int, loss_function: torch.nn, cfg: DictConfig, device:str, **kwargs):
-        """Class for Online Laplace training and inference. """
+    def __init__(
+        self,
+        net,
+        dataset_size: int,
+        loss_function: torch.nn,
+        cfg: DictConfig,
+        device: str,
+        **kwargs
+    ):
+        """Class for Online Laplace training and inference."""
         self.cfg = cfg
         self.net = net
         self.dataset_size = dataset_size
@@ -185,7 +193,7 @@ class OnlineLaplace:
                     self.hessian_change_signed = torch.mean(
                         temp_hessian + hessian_memory_factor * self.hessian - self.hessian
                     )
-                    #for run 5410, clamping has been removed
+                    # for run 5410, clamping has been removed
                     """ self.hessian = torch.clamp(
                         temp_hessian + hessian_memory_factor * self.hessian,
                         min=self.hessian * 0.5 ** (1 / 10) + 1e-8,

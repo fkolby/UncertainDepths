@@ -9,7 +9,8 @@ import pdb
 
 
 class nyudv2_dataset(depth_dataset):
-    """Untested nyudv2 class. Still needs a get PIL image method. """
+    """Untested nyudv2 class. Still needs a get PIL image method."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # self.cfg = kwargs.get("cfg")

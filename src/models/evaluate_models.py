@@ -4,7 +4,7 @@ import timeit
 from datetime import datetime
 import psutil
 
-from torch. utils.data import DataLoader
+from torch.utils.data import DataLoader
 from omegaconf import DictConfig
 from typing import Union, Any
 
@@ -34,18 +34,17 @@ from src.utility.train_utils import seed_everything
 
 @torch.no_grad()
 def eval_model(
-    model, #get typing on nnj
+    model,  # get typing on nnj
     test_loader: DataLoader,
     cfg: DictConfig,
     dataloader_for_hessian: Union[None, DataLoader] = None,
-    round_vals: bool=True,
-    round_precision: bool =3,
-    dont_log_wandb: bool =False,
+    round_vals: bool = True,
+    round_precision: bool = 3,
+    dont_log_wandb: bool = False,
     **kwargs,
-) -> dict[str,Any]:
+) -> dict[str, Any]:
     """Evaluate model; log example images to wandb, compute uncertainties, lossmetrics, and save results to results folder. Dont log wandb used by eval-from trained model."""
     ### NEEDS to be split up to smaller, unit-testable code.
-    
 
     metrics = RunningAverageDict()
     if torch.cuda.is_available():

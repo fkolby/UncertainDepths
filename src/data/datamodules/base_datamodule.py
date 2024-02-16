@@ -12,6 +12,7 @@ from src.data.datasets.KITTI import KITTI_dataset
 
 class base_datamodule(pl.LightningDataModule):
     """Base datamodule - basically just holds method (setup) for setting up a dataloader as class attribute."""
+
     def __init__(
         self,
         cfg: DictConfig,

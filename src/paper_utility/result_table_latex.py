@@ -79,21 +79,13 @@ def df_to_latex(
 
 if __name__ == "__main__":
     filter_identities = [
-            "2024_02_15_09_38_48_6142_Dropout",
-            "2024_02_15_11_58_42_6215_Ensemble",
-            "2024_02_15_09_38_48_6141_Posthoc_Laplace",
-            "2024_02_15_09_38_05_6139_Online_Laplace",
-        ]    
+        "2024_02_15_09_38_48_6142_Dropout",
+        "2024_02_15_11_58_42_6215_Ensemble",
+        "2024_02_15_09_38_48_6141_Posthoc_Laplace",
+        "2024_02_15_09_38_05_6139_Online_Laplace",
+    ]
     df_to_latex(filter_identities=filter_identities)
     df_to_latex(
         filter_identities=filter_identities,
-        cols_of_interest=[
-            "model_type",
-            "delta1",
-            "delta2",
-            "delta3",
-            "abs_rel",
-            "rmse",
-            "silog"
-        ],
+        cols_of_interest=["model_type", "delta1", "delta2", "delta3", "abs_rel", "rmse", "silog"],
     )

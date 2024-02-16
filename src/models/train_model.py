@@ -34,7 +34,6 @@ from datetime import datetime
 def main(cfg: DictConfig) -> None:
     """Trains a model, given by the config. Supported setups are currently KITTI as dataset, and either MCDropout, Ensemble, Online Laplace or Posthoc Laplace"""
 
-
     print("GPU: ", torch.cuda.is_available())
     print("nGPUs:", torch.cuda.device_count())
     print("CurrDevice:", torch.cuda.current_device())

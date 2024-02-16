@@ -16,15 +16,15 @@ from torchvision import transforms
 
 # shamelessly inspired by Zoedepth
 def filter_valid(
-    gt : torch.Tensor,
-    pred : torch.Tensor,
+    gt: torch.Tensor,
+    pred: torch.Tensor,
     uncertainty: torch.Tensor,
     interpolate: bool = True,
     garg_crop: bool = True,
     eigen_crop: bool = False,
-    dataset: str= "kitti",
-    min_depth_eval: float =1e-3,
-    max_depth_eval: float=80,
+    dataset: str = "kitti",
+    min_depth_eval: float = 1e-3,
+    max_depth_eval: float = 80,
     **kwargs,
 ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Compute metrics of predicted depth maps. Applies cropping and masking as necessary or specified via arguments. Refer to compute_errors for more details on metrics."""
@@ -79,9 +79,14 @@ def filter_valid(
 
 
 def save_eval_images(
-    images: torch.Tensor, depths: torch.Tensor, preds: torch.Tensor, uncertainty: torch.Tensor, date_and_time_and_model: str, cfg: DictConfig, dont_log_wandb=False
-) -> None: 
-    
+    images: torch.Tensor,
+    depths: torch.Tensor,
+    preds: torch.Tensor,
+    uncertainty: torch.Tensor,
+    date_and_time_and_model: str,
+    cfg: DictConfig,
+    dont_log_wandb=False,
+) -> None:
     for j in range(min(images.shape[0], 4)):
         image = images[j, :, :, :]
         depth = depths[j, :, :, :]

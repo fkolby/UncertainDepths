@@ -22,7 +22,6 @@ from src.models.evaluate_models import eval_model
 import argparse
 
 
-
 def main() -> None:
     """Seeds, creates test dataloaders, and evaluate models, from model setup folder (already trained), given by CLI-arguments"""
     #################### LOAD IN MODEL AND CONFIG ####################
@@ -30,7 +29,6 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("ident")
     args = parser.parse_args()
-
 
     if args.ident.split("_")[-1] == "Laplace":
         model_type = "_".join(args.ident.split("_")[-2:])
@@ -88,7 +86,6 @@ def main() -> None:
     )
     datamodule.setup(stage="fit")
 
-
     datamoduleEval = KITTI_datamodule(
         transform=transform,
         target_transform=target_transform,
@@ -97,9 +94,7 @@ def main() -> None:
 
     datamoduleEval.setup(stage="fit", dataset_type_is_ood=cfg.OOD.use_white_noise_box_test)
 
-
     ########################### RUN EVAL ############
-
 
     if cfg.models.model_type == "Online_Laplace":
         eval_model(
@@ -107,7 +102,7 @@ def main() -> None:
             test_loader=datamoduleEval.test_dataloader(),
             dataloader_for_hessian=datamodule.val_dataloader(),
             cfg=cfg,
-            #dont_optimize_prior_prec=True,
+            # dont_optimize_prior_prec=True,
             online_hessian=torch.load(f"{cfg.models.model_type}_hessian.pt"),
             dont_log_wandb=True,  # (wandb_run_id is None),
         ),
@@ -135,5 +130,6 @@ def main() -> None:
             dont_log_wandb=True,  # (wandb_run_id is None),
         )
 
-if __name__== "__main__":
+
+if __name__ == "__main__":
     main()

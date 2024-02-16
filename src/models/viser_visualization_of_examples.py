@@ -16,7 +16,7 @@ from typing import List
 import viser
 
 
-def get_intrinsics(H:float, W:float) -> torch.Tensor:# Inspired by gradio demo of ZoeDepth
+def get_intrinsics(H: float, W: float) -> torch.Tensor:  # Inspired by gradio demo of ZoeDepth
     """
     Intrinsics for a pinhole camera model.
     Assume fov of 55 degrees and central principal point.
@@ -29,7 +29,7 @@ def get_intrinsics(H:float, W:float) -> torch.Tensor:# Inspired by gradio demo o
     )
 
 
-def img_dicts(picture_folders: List[str]) -> dict[str,dict[str,List[torch.Tensor]]]:
+def img_dicts(picture_folders: List[str]) -> dict[str, dict[str, List[torch.Tensor]]]:
     """Generates a dictionary to be indexed by viser tool for 3D visualizations.
     Takes images from picture folders"""
 

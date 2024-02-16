@@ -4,8 +4,8 @@ import os
 
 
 class KITTI_dataset(depth_dataset):
-    """KITTI dataset depth - just subclasses the base dataset class, and implements PIL_get_image
-    """
+    """KITTI dataset depth - just subclasses the base dataset class, and implements PIL_get_image"""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 

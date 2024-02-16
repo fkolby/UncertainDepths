@@ -6,6 +6,7 @@ from torch.utils.data import Subset
 
 class KITTI_datamodule(base_datamodule):
     """Just a container for running setup - which just setups dataloaders on the KITTI dataset class"""
+
     def __init__(self, *args, **kwargs):
         self.data_dir = kwargs.pop(
             "data_dir", "/home/frederik/UncertainDepths/data/external/KITTI/"

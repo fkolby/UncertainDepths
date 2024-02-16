@@ -13,7 +13,9 @@ from src.utility.debug_utils import time_since_previous_log
 
 
 ## function found from ADABINS (https://github.com/shariqfarooq123/AdaBins/blob/main/utils.pdepth)
-def colorize(value: torch.Tensor, vmin:float=10., vmax:float =1000., cmap="plasma") -> torch.Tensor:
+def colorize(
+    value: torch.Tensor, vmin: float = 10.0, vmax: float = 1000.0, cmap="plasma"
+) -> torch.Tensor:
     """Colorize an image"""
     # normalize
     print("colorize")
@@ -46,7 +48,7 @@ def colorize(value: torch.Tensor, vmin:float=10., vmax:float =1000., cmap="plasm
     return img
 
 
-def denormalize(x: torch.Tensor, device: str="cpu") -> torch.Tensor:
+def denormalize(x: torch.Tensor, device: str = "cpu") -> torch.Tensor:
     """Denormalizes a batch of images, based on imagenet statistics."""
 
     mean = torch.Tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1).to(device)
@@ -61,7 +63,15 @@ def denormalize(x: torch.Tensor, device: str="cpu") -> torch.Tensor:
     return torch.clamp(out, 0, 1)
 
 
-def log_images(img: torch.Tensor, depth:torch.Tensor, pred:torch.Tensor, vmin:float, vmax:float, step:int, image_appendix="") -> None:
+def log_images(
+    img: torch.Tensor,
+    depth: torch.Tensor,
+    pred: torch.Tensor,
+    vmin: float,
+    vmax: float,
+    step: int,
+    image_appendix="",
+) -> None:
     """Colorizes grayscale depth and pred and logs differences and abs differences of depth and predicition. Logs result to wandb."""
 
     depthdiff = colorize((depth - pred), vmin=vmin, vmax=vmax)
@@ -146,7 +156,9 @@ def calc_loss_metrics(preds, targets):
     }
 
 
-def log_loss_metrics(preds: torch.Tensor, targets: torch.Tensor, tstep: int=0, loss_prefix="train") -> None:
+def log_loss_metrics(
+    preds: torch.Tensor, targets: torch.Tensor, tstep: int = 0, loss_prefix="train"
+) -> None:
     """Calcs loss metrics and logs them to wandb"""
     metrics = calc_loss_metrics(preds=preds, targets=targets)
     wandb.log(

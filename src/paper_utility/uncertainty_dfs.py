@@ -6,10 +6,11 @@ import seaborn as sns
 from typing import List
 
 
-def gather_model_dfs(identification_strings: List[str], df_prefixs : List[str] = ["scaled_", ""]) -> pd.DataFrame:
+def gather_model_dfs(
+    identification_strings: List[str], df_prefixs: List[str] = ["scaled_", ""]
+) -> pd.DataFrame:
     """Join category, model dataframes based into longformat. Here category is a dataframe with uncertainties of given type, and identification strings
     Give identifications of model."""
-
 
     scoring_metrics = {
         "delta1": "Delta 1",
@@ -62,7 +63,6 @@ def gather_model_dfs(identification_strings: List[str], df_prefixs : List[str] =
 def save_uncertainty_plots(df, file_prefix):
     """Generates monotonicty plots of different metrics, e.g. RMSE, MSE or the like, sorted by some other metric, e.g. uncertainty"""
 
-    
     for i, c in enumerate(df.columns):
         if c not in ["Share", "Model Type", "identifier", "Uncertainty type"]:
             print(c)
@@ -71,14 +71,13 @@ def save_uncertainty_plots(df, file_prefix):
             # g = sns.FacetGrid(df, col="Uncertainty type")
             # plot = g.map_dataframe(sns.lineplot, x="Share", y=c, hue="Model Type")
             if c in ["Mean Squared Error", "Root Mean Squared Error"]:
-                metric_relevant_uncertainty = "Scaled SD"# " SD"
+                metric_relevant_uncertainty = "Scaled SD"  # " SD"
             else:
                 metric_relevant_uncertainty = "Scaled SD"
             df_c = df.loc[df["Uncertainty type"] == metric_relevant_uncertainty]
             plot = sns.lineplot(data=df_c, hue="Model Type", x="Share", y=c)
-            #plot.set_xlabel("Share - " + metric_relevant_uncertainty)
+            # plot.set_xlabel("Share - " + metric_relevant_uncertainty)
             plot.set_xlabel("Share of pixels - sorted by uncertainty")
-
 
             fig = plot.get_figure()
             fig.savefig(fname=file_prefix + c + ".png")
