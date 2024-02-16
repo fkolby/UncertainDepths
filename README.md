@@ -4,7 +4,7 @@ UncertainDepths
 ![Uncertainties given by our models, and baselines](UncQualReport.png)
 
 
-![Monotonicity of uncertainty w.r.t. common losses differ by model type](src/final_reportRoot Mean Squared Error.png)
+![Monotonicity of uncertainty w.r.t. common losses differ by model type](src/final_reportRoot_Mean_Squared_Error.png)
 
 Estimating depths from a single image, with *reliable* uncertainty.
 
