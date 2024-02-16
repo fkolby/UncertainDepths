@@ -1,10 +1,10 @@
 UncertainDepths
 ==============================
 
-!(UncQualReport.png)
+![Uncertainties given by our models, and baselines](UncQualReport.png)
 
 
-
+![Monotonicity of uncertainty w.r.t. common losses differ by model type](ROC_curve_classify_OOD.png)
 
 Estimating depths from a single image, with *reliable* uncertainty.
 
