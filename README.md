@@ -30,16 +30,7 @@ Project Organization
 
     ├── README.md         
     │
-    ├── models             <- Trained and serialized models, model predictions, or model summaries
-    │
-    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-    │                         the creator's initials, and a short `-` delimited description, e.g.
-    │                         `1.0-jqp-initial-data-exploration`.
-    │
-    ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
-    │
-    ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-    │   └── figures        <- Generated graphics and figures to be used in reporting
+    ├── report            <- Contains a report on the model, as well as some details and results on the runs
     │
     ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
     │                         generated with `pip freeze > requirements.txt`
@@ -48,23 +39,31 @@ Project Organization
     ├── src                <- Source code for use in this project.
     │   ├── __init__.py    <- Makes src a Python module
     │   │
+    │   ├── conf           <- Configs for running experiments, using hydra.
+    |   |   
     │   ├── data           <- Scripts to download or generate data
-    │   │   └── make_dataset.py
-    │   │
-    │   ├── features       <- Scripts to turn raw data into features for modeling
-    │   │   └── build_features.py
+    │   │   ├──── datamodules  <- datamodules for setting up dataloaders
+    │   │   ├──── datasets <- scripts for setting up datasets
+    │   │   └──── other scripts <- typically short and self-explanatory.
     │   │
     │   ├── models         <- Scripts to train models and then use trained models to make
     │   │   │                 predictions
-    │   │   ├── predict_model.py
-    │   │   └── train_model.py
+    │   │   ├──── laplace/ <- implementation of class used for online laplace on top of lightning module
+    │   │   ├──── modelImplementations/ <- implementations of the nnj-net used in report
+    │   │   ├──── lightning_modules/ <-  lightning module supplying main training logic.
+    │   │   ├──── outputs/ <-  outputs from all training runs - images, dataframes with uncertainty scores, weights, setup config.
+    |   │   ├──── train_model.py <- trains the models according to config
+    │   │   ├──── evaluate_model.py <- evaluates models - typically run by run_eval.py
+    │   │   ├──── run_eval.py <- runs evaluate models
+    │   │   ├──── viser_visualization_of_examples.py <- visualizes model prediction and uncertainty in 3D  
+    │   │   └──── other scripts <- short and self explanatory
     │   │
-    │   └── visualization  <- Scripts to create exploratory and results oriented visualizations
-    │       └── visualize.py
+    │   ├── paper_utility <- Small scripts for reproducing figures and tables in report.
+    │   │
+    │   ├── utility <- Miscellaneous scripts. Functions are small, few and self-explanatory
+    │  
     │
     └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
 
 
 --------
-
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
