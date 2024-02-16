@@ -16,7 +16,9 @@
 While other methods fail in predicting high uncertainty -> high loss, Online Laplace is reliable across all standard loss metrics.
 
 
-### Uncertainties on test-set images
+### Only Online Laplace has monotonically increasing error in uncertainty.
+
+While other methods fail in predicting high uncertainty -> high loss, Online Laplace is reliable across all standard loss metrics.
 
 ![Monotonicity of uncertainty w.r.t. common losses differ by model type](src/final_reportRoot_Mean_Squared_Error.png)
 
