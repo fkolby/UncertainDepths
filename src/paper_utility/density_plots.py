@@ -56,6 +56,7 @@ def density_plot(idents: List[str]) -> None:
             stat="probability",
             common_norm=False,
         )
+        plot.set_xlabel("Uncertainty")
         plot.get_figure().savefig(f"{model}_density_plot.png")
         plot.clear()
 
@@ -99,15 +100,16 @@ def density_plot(idents: List[str]) -> None:
         common_norm=False,
         binrange=(0, 0.6),
     )
+    faceted_plot.set_xlabels("Uncertainty")
     faceted_plot.savefig("test_distribution.png")
 
 
 if __name__ == "__main__":
     density_plot(
         [
-            "2024_01_31_01_02_04_185_Dropout",
-            "2024_01_31_04_51_37_185_Ensemble",
-            "2024_01_30_21_55_26_185_Posthoc_Laplace",
-            "2024_01_30_18_59_42_185_Online_Laplace",
+            "2024_02_15_09_38_48_6142_Dropout",
+            "2024_02_15_11_58_42_6215_Ensemble",
+            "2024_02_15_09_38_48_6141_Posthoc_Laplace",
+            "2024_02_15_09_38_05_6139_Online_Laplace",
         ]
     )

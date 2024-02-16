@@ -4,7 +4,7 @@ import numpy as np
 import torch
 from torch import nn
 import os
-from typing import List
+from typing import List, Tuple
 import torch
 from omegaconf import DictConfig
 
@@ -26,7 +26,7 @@ def filter_valid(
     min_depth_eval: float =1e-3,
     max_depth_eval: float=80,
     **kwargs,
-) -> tuple(torch.Tensor, torch.Tensor, torch.Tensor):
+) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Compute metrics of predicted depth maps. Applies cropping and masking as necessary or specified via arguments. Refer to compute_errors for more details on metrics."""
 
     if "config" in kwargs:

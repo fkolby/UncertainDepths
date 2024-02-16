@@ -112,7 +112,7 @@ def eval_model(
         print(kwargs)
         if kwargs.get("dont_optimize_prior_prec", False):
             print("prior_pres")
-            prior_precision = cfg.prior_prec
+            prior_precision = cfg.models.prior_prec
 
         print(f"prior precision: {prior_precision}")
     if cfg.models.model_type == "Online_Laplace":
@@ -126,7 +126,8 @@ def eval_model(
                 n_steps=5000,
             )
         if kwargs.get("dont_optimize_prior_prec", False):
-            prior_precision = cfg.prior_prec
+            prior_precision = cfg.models.prior_prec
+
         print(f"prior precision: {prior_precision}")
 
     # ======================================================   PREDICTING  ===============================================
@@ -361,7 +362,7 @@ def eval_model(
             )
         # need in full length for kdeplot. as running out of cpu mem, dont move to cpu.
 
-        if i <= 50:
+        if i <= 500:
             uncertainty_all_pixels = torch.concat(
                 [uncertainty_all_pixels, uncertainty.to(device="cuda")]
             )

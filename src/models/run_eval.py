@@ -107,6 +107,7 @@ def main() -> None:
             test_loader=datamoduleEval.test_dataloader(),
             dataloader_for_hessian=datamodule.val_dataloader(),
             cfg=cfg,
+            #dont_optimize_prior_prec=True,
             online_hessian=torch.load(f"{cfg.models.model_type}_hessian.pt"),
             dont_log_wandb=True,  # (wandb_run_id is None),
         ),

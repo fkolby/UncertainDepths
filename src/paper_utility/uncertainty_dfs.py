@@ -71,15 +71,18 @@ def save_uncertainty_plots(df, file_prefix):
             # g = sns.FacetGrid(df, col="Uncertainty type")
             # plot = g.map_dataframe(sns.lineplot, x="Share", y=c, hue="Model Type")
             if c in ["Mean Squared Error", "Root Mean Squared Error"]:
-                metric_relevant_uncertainty = " SD"
+                metric_relevant_uncertainty = "Scaled SD"# " SD"
             else:
                 metric_relevant_uncertainty = "Scaled SD"
             df_c = df.loc[df["Uncertainty type"] == metric_relevant_uncertainty]
             plot = sns.lineplot(data=df_c, hue="Model Type", x="Share", y=c)
-            plot.set_xlabel("Share - " + metric_relevant_uncertainty)
+            #plot.set_xlabel("Share - " + metric_relevant_uncertainty)
+            plot.set_xlabel("Share of pixels - sorted by uncertainty")
+
 
             fig = plot.get_figure()
-            fig.get_figure().savefig(fname=file_prefix + c)
+            fig.savefig(fname=file_prefix + c + ".png")
+            print(file_prefix + c)
             fig.clear()
             """ plt.plot(x = df[["Share"]], df[[c]])
                 plt.xlabel("Uncertainty: Share of predictions")
@@ -92,11 +95,12 @@ def save_uncertainty_plots(df, file_prefix):
 if __name__ == "__main__":
     aggregate_dfs = gather_model_dfs(
         [
-            "2024_01_31_01_02_04_185_Dropout",
-            "2024_01_31_04_51_37_185_Ensemble",
-            "2024_01_30_21_55_26_185_Posthoc_Laplace",
-            "2024_01_30_18_59_42_185_Online_Laplace",
+            "2024_02_15_09_38_48_6142_Dropout",
+            "2024_02_15_11_58_42_6215_Ensemble",
+            "2024_02_15_09_38_48_6141_Posthoc_Laplace",
+            "2024_02_15_09_38_05_6139_Online_Laplace",
         ]
     )
+    print("Hi")
     print(aggregate_dfs.loc[aggregate_dfs["Uncertainty type"] != "scaled"])
-    save_uncertainty_plots(aggregate_dfs, "test_mini_report")
+    save_uncertainty_plots(aggregate_dfs, "final_report")

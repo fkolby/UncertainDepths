@@ -185,11 +185,12 @@ class OnlineLaplace:
                     self.hessian_change_signed = torch.mean(
                         temp_hessian + hessian_memory_factor * self.hessian - self.hessian
                     )
-                    self.hessian = torch.clamp(
+                    #for run 5410, clamping has been removed
+                    """ self.hessian = torch.clamp(
                         temp_hessian + hessian_memory_factor * self.hessian,
-                        min=self.hessian * 0.5 ** (1 / 1000) + 1e-8,
-                        max=self.hessian * 2 ** (1 / 1000) + 1e-8,
-                    )
+                        min=self.hessian * 0.5 ** (1 / 10) + 1e-8,
+                        max=self.hessian * 2 ** (1 / 10) + 1e-8,
+                    ) """
 
             else:
                 self.hessian_change_abs = torch.zeros_like(mu_q)
