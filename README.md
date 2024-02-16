@@ -66,4 +66,10 @@ Project Organization
     └── tox.ini            <- tox file with settings for running tox; see tox.readthedocs.io
 
 
---------
+## Reproducing
+
+Experiments were run on a Nvidia A100 GPU, on a slurm cluster.
+
+To reproduce the results from the report - run the respectively no_debug_run.sh by commenting out the relevant run. Then take the created folder in outputs and use it as input to the run_eval.sh bash script. 
+
+
