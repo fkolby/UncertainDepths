@@ -1,13 +1,21 @@
-UncertainDepths
+# UncertainDepths
 ==============================
 
-Estimating depths from a single image, with *reliable* uncertainty.
+## Estimating depths from a single image, with *reliable* uncertainty.
 
 
 :car: Online and Posthoc Laplace gives *intuitive* uncertainties - models trained on roads and cars (KITTI), are confident in predictions on roads and cars. :car:
+
+
+
 ![Uncertainties given by our models, and baselines](UncQualReport.png)
 
+
+
 While other methods fail in predicting high uncertainty -> high loss, Online Laplace is reliable across all standard loss metrics.
+
+
+
 ![Monotonicity of uncertainty w.r.t. common losses differ by model type](src/final_reportRoot_Mean_Squared_Error.png)
 
 
